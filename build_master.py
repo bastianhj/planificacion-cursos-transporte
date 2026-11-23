@@ -21,6 +21,9 @@ parser.add_argument("--cursos-transporte", default=CT_PATH, help="Ruta a Cursos_
 parser.add_argument("--carga-docente", default=CD_PATH, help="Ruta a Carga Docente.xlsx")
 parser.add_argument("--out-xlsx", default=os.path.join(REPO_ROOT, "data", "Maestro_Cursos_Transporte.xlsx"), help="Ruta de salida del archivo maestro .xlsx")
 parser.add_argument("--out-datajs", default=os.path.join(REPO_ROOT, "data.js"), help="Ruta de salida de data.js (datos para la app web)")
+parser.add_argument("--catalogo-metadata", default=None,
+                     help="Ruta a Catalogo_metadata.xlsx (RUT/correo/cupos/requisitos para el export del catálogo "
+                          "oficial). Si no se indica, el export de catálogo en la app no tendrá estos datos.")
 parser.add_argument("--instrucciones", default=None,
                      help="Ruta a un archivo previo con instrucciones de corrección ya ingresadas por el usuario "
                           "(instrucciones_correccion.json exportado desde la app, o un Maestro_Cursos_Transporte.xlsx "
@@ -29,6 +32,35 @@ parser.add_argument("--instrucciones", default=None,
 ARGS = parser.parse_args()
 
 CV2_PATH, CT_PATH, CD_PATH = ARGS.cursos_v2, ARGS.cursos_transporte, ARGS.carga_docente
+
+
+def load_catalogo_metadata(path):
+    """Lee Catalogo_metadata.xlsx (RUT/correo/cupos/requisitos para el export del catálogo
+    oficial). Devuelve una lista de dicts, uno por fila, con las claves de HEADERS tal cual
+    están en la hoja. Si no se indica archivo o no existe, devuelve [].
+    """
+    if not path or not os.path.exists(path):
+        return []
+    wb_meta = openpyxl.load_workbook(path, data_only=True)
+    ws_meta = wb_meta["Catalogo_metadata"]
+    hdr_row = None
+    for r in range(1, 6):
+        if ws_meta.cell(row=r, column=1).value == "Codigo":
+            hdr_row = r
+            break
+    if hdr_row is None:
+        return []
+    headers = [ws_meta.cell(row=hdr_row, column=c).value for c in range(1, ws_meta.max_column + 1)]
+    out = []
+    for row in ws_meta.iter_rows(min_row=hdr_row + 1, values_only=True):
+        d = dict(zip(headers, row))
+        if not d.get("Codigo"):
+            continue
+        out.append(d)
+    return out
+
+
+catalogo_metadata_json = load_catalogo_metadata(ARGS.catalogo_metadata)
 
 
 def load_instrucciones(path):
@@ -651,9 +683,27 @@ for row in range(first, last + 1):
     if ws.cell(row=row, column=11).value:
         ws.cell(row=row, column=11).fill = WARN_FILL
 
+# Sheet: Catalogo_metadata (RUT/correo/cupos/requisitos para el export del catálogo oficial)
+# -------------------------------------------------------------------
+if catalogo_metadata_json:
+    ws = wb.create_sheet("Catalogo_metadata")
+    cm_headers = list(catalogo_metadata_json[0].keys())
+    cm_rows = [[row.get(h) for h in cm_headers] for row in catalogo_metadata_json]
+    hdr_row, first, last = write_table(
+        ws, 1, cm_headers, cm_rows,
+        widths=[9, 8, 34, 30, 22, 10, 10, 10, 30, 20, 30, 16, 20, 24, 10, 10, 10, 30, 10, 55][:len(cm_headers)],
+        title="Metadatos del catálogo oficial de cursos (RUT, correo, cupos, requisitos)",
+        subtitle=("No incluye horarios: esos se calculan siempre en vivo desde Oferta_2027 al exportar el catálogo "
+                  "desde la pestaña Horario. Editar esta hoja en Catalogo_metadata.xlsx y volver a correr "
+                  "build_master.py para que los cambios lleguen a la app."),
+    )
+    ws.auto_filter.ref = f"A{hdr_row}:{get_column_letter(len(cm_headers))}{last}"
+
 # Orden de hojas
 order = ["Léeme", "Chequeo_consistencia", "Diccionario_periodos", "Oferta_2025", "Oferta_2026",
          "Oferta_2027", "Carga_docente_2027", "Malla_completa"]
+if catalogo_metadata_json:
+    order.append("Catalogo_metadata")
 wb._sheets = [wb[name] for name in order]
 wb.active = 0
 
@@ -781,6 +831,7 @@ site_data = {
     "chequeo": chequeo_json,
     "resumen_carga_profesor": resumen_prof_json,
     "balance_oe": balance_json,
+    "catalogo_metadata": catalogo_metadata_json,
 }
 
 import os

@@ -12,14 +12,22 @@ Sitio en vivo (una vez publicado): `https://<tu-usuario>.github.io/<nombre-del-r
 - `index.html`, `app.js`, `styles.css` — la aplicación.
 - `data.js` — los datos "de fábrica" (generados la última vez que se corrió el script de
   conversión). La app arranca siempre con estos datos.
-- `Maestro_Cursos_Transporte.xlsx` — el archivo maestro consolidado (mismo que se generó
+- `data/Maestro_Cursos_Transporte.xlsx` — el archivo maestro consolidado (mismo que se generó
   junto a esta app), con las hojas `Oferta_2025`, `Oferta_2026`, `Oferta_2027`,
-  `Malla_completa`, `Carga_docente_2027` y `Chequeo_consistencia`.
-- `build_master.py` + `common.py` — el script de Python que lee las 3
+  `Malla_completa`, `Carga_docente_2027`, `Chequeo_consistencia` y `Catalogo_metadata`.
+- `data/Catalogo_metadata.xlsx` — RUT, correo, nombre completo, sección, cupos y requisitos
+  de cada curso/sección de Transporte, para el botón **"Descargar catálogo oficial (.xlsx)"**
+  de la pestaña "Horario y choques" (exporta un Excel con la misma estructura exacta que la
+  planilla "Formato Catálogo" de la Facultad). El horario de cada curso se calcula siempre en
+  vivo desde `Oferta_2027`/la grilla, nunca desde esta planilla — acá solo se guardan los datos
+  que no existen en el resto del modelo (RUT, correo, cupos, requisitos). Editar esta hoja y
+  volver a correr `build_master.py` (con `--catalogo-metadata`) para que los cambios lleguen a
+  la app.
+- `scripts/build_master.py` + `scripts/common.py` — el script de Python que lee las 3
   planillas originales (`Cursos_v2.xlsx`, `Cursos_transporte_2025-2026.xlsx`,
-  `Carga Docente.xlsx`), hace el chequeo de consistencia, arma el archivo maestro y genera
-  `data.js`.
-- `xlsx.full.min.js` — librería [SheetJS](https://sheetjs.com/) (MIT license) usada
+  `Carga Docente.xlsx`) y opcionalmente `Catalogo_metadata.xlsx` (`--catalogo-metadata`), hace
+  el chequeo de consistencia, arma el archivo maestro y genera `data.js`.
+- `vendor/xlsx.full.min.js` — librería [SheetJS](https://sheetjs.com/) (MIT license) usada
   para leer archivos `.xlsx` directamente en el navegador, sin subirlos a ningún servidor.
 
 ## Cómo actualizar los datos
@@ -30,7 +38,7 @@ Tienes dos formas de refrescar la aplicación cuando cambien tus planillas:
 
 1. Actualiza tus 3 planillas de siempre (`Cursos_v2.xlsx`, `Cursos_transporte_2025-2026.xlsx`,
    `Carga Docente.xlsx`).
-2. Corre `build_master.py` (ver abajo) para generar un nuevo
+2. Corre `scripts/build_master.py` (ver abajo) para generar un nuevo
    `Maestro_Cursos_Transporte.xlsx`.
 3. Abre la aplicación (local o ya publicada) → pestaña **"Cargar datos"** → sube ese archivo
    `.xlsx`. Todo se recalcula en el navegador y se guarda localmente en ese navegador hasta
@@ -51,7 +59,7 @@ python3 build_master.py \
   --carga-docente "/ruta/a/Carga Docente.xlsx"
 ```
 
-Esto regenera `data.js` y `Maestro_Cursos_Transporte.xlsx`. Requiere Python 3 con
+Esto regenera `../data.js` y `../data/Maestro_Cursos_Transporte.xlsx`. Requiere Python 3 con
 `openpyxl` instalado (`pip install openpyxl`). Luego sube los cambios a GitHub (ver abajo) para
 que el sitio publicado quede actualizado.
 
@@ -131,14 +139,14 @@ descarga el `.json` de cambios y pídeselo a Claude.
 3. En la página del repositorio recién creado, usa **"uploading an existing file"** (o
    "Add file → Upload files") y arrastra TODO el contenido de esta carpeta (no la carpeta
    misma, sino los archivos y subcarpetas `index.html`, `app.js`, `styles.css`, `data.js`,
-   `Maestro_Cursos_Transporte.xlsx`, `common.py`, `build_master.py`, `xlsx.full.min.js`, `XLSX_LICENSE.txt`, `.nojekyll`, `README.md`). Confirma el commit.
+   `data/`, `scripts/`, `vendor/`, `.nojekyll`, `README.md`). Confirma el commit.
 4. Ve a **Settings → Pages**. En "Source" elige la rama `main` y la carpeta `/ (root)`, y
    guarda.
 5. En 1–2 minutos GitHub te mostrará la URL pública (algo como
    `https://tu-usuario.github.io/oferta-cursos-transporte/`).
 
 **Para actualizar** el sitio más adelante: vuelve al repositorio, entra a los archivos que
-cambiaron (por ejemplo `data.js` y `Maestro_Cursos_Transporte.xlsx`) y usa el lápiz de
+cambiaron (por ejemplo `data.js` y `data/Maestro_Cursos_Transporte.xlsx`) y usa el lápiz de
 edición o "Add file → Upload files" de nuevo para reemplazarlos. GitHub Pages se actualiza
 solo, normalmente en menos de un minuto.
 

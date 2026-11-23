@@ -607,6 +607,157 @@ function dayNameToNum(name) {
   return idx >= 0 ? idx + 1 : null;
 }
 
+// ---------- Exportar catálogo oficial (formato "CATÁLOGO" de la Facultad) ----------
+// Genera un .xlsx con exactamente la misma estructura que la planilla oficial
+// "Formato Catálogo" que entrega la Facultad: sheet "CATÁLOGO", fila de título, fila de
+// encabezados (23 columnas) y una fila por curso+sección. Los horarios SIEMPRE se calculan
+// en vivo desde la oferta vigente (buildGrid); RUT/correo/nombre completo/cupos/requisitos
+// vienen de la hoja Catalogo_metadata (ver build_master.py / Catalogo_metadata.xlsx), que es
+// la fuente persistente para esos datos porque no existen en el resto del modelo de datos.
+const CATALOGO_HEADERS = [
+  "ENCARGADO/A", "ESTADO (OK/PENDIENTE)", "NOMBRE CURSO", "CÓDIGO CURSO", "SECCIÓN",
+  "CRÉDITOS (SCT)", "COMENTARIO PARA OFERTAR EL CURSO (Ej. Se dicta desde la segunda mitad del semestre)",
+  "CUPOS ESTUDIANTES DE PREGRADO", "CUPOS PARA MOVILIDAD NACIONAL E INTERNACIONAL ESTUDIANTIL ",
+  "CUPOS PARA PRESTACIONES DE SERVICIO A ESTUDIANTES DE OTRA FACULTAD UCHILE",
+  "HORARIO DE CÁTEDRA (NORMAL Ej. 2.3, 4.3) (EXTENDIDO Ej. 2.3*, 4.3*)",
+  "HORARIO AUXILIAR (NORMAL Ej. 2.3, 4.3) (EXTENDIDO Ej. 2.3*, 4.3*)",
+  "HORARIO LABORATORIO (NORMAL Ej. 2.3, 4.3) (EXTENDIDO Ej. 2.3*, 4.3*)",
+  "NOMBRE PROFESOR(A) DE CÁTEDRA", "RUT PROFESOR(A) DE CÁTEDRA", "CORREO DE CONTACTO DE PROFESOR(A) DE CÁTEDRA",
+  "RUT PROFESOR(A) COORDINADOR(A)", "NOMBRE PROFESOR(A) COORDINADOR(A)", "CORREO DE CONTACTO DE PROFESOR(A) COORDINADOR(A)",
+  "CANTIDAD DE EVALUACIONES TIPO CONTROL", "REALIZA EXÁMEN SI/NO", "REALIZA ENCUESTA SI/NO",
+  "COMENTARIO PARA EQUIPO DE GESTIÓN DOCENTE",
+];
+
+// Un código "oficial" se ve como CI3141, IN2201, MA3402, etc. Esto excluye a propósito
+// placeholders como "CIXXX" (cursos sin código asignado todavía) del catálogo exportado.
+function esCodigoOficial(codigo) {
+  return /^[A-Z]{2,4}\d{3,4}$/.test(String(codigo || "").trim());
+}
+
+function getCatalogoMetadata(codigo, seccion) {
+  const meta = (state.data.catalogo_metadata || []);
+  return meta.find((m) => m.Codigo === codigo && Number(m.Seccion || 1) === Number(seccion || 1)) || null;
+}
+
+// Arma "2.3, 4.3*" a partir de sesiones {dia, periodo, ext}, ordenadas y sin duplicados.
+function formatDiaPeriodo(sesiones) {
+  const vistos = new Set();
+  const partes = [];
+  sesiones
+    .slice()
+    .sort((a, b) => (a.dia - b.dia) || (a.periodo - b.periodo))
+    .forEach((s) => {
+      if (!s.dia || !s.periodo) return;
+      const key = `${s.dia}.${s.periodo}${s.ext ? "*" : ""}`;
+      if (vistos.has(key)) return;
+      vistos.add(key);
+      partes.push(key);
+    });
+  return partes.join(", ");
+}
+
+// La lista de QUÉ cursos están ofertados sale de oferta_<year> (fuente de verdad), no de la
+// grilla — así un curso sin horario fijo (p.ej. un seminario tipo CI6304) igual aparece en el
+// catálogo, con las columnas de horario en blanco. El horario, aparte, se arma desde la
+// grilla (buildGrid), que es la que refleja movimientos manuales hechos en la pestaña Horario.
+// "(S1)"/"(S2)" en el nombre indica secciones distintas; dos filas con el mismo código y el
+// mismo nombre (sin sufijo) son profesores co-dictando UNA sola sección.
+function seccionYNombreBase(nombre) {
+  const m = /^(.*?)\s*\(S(\d+)\)\s*$/i.exec(nombre || "");
+  return m ? { seccion: parseInt(m[2], 10), nombreBase: m[1].trim() } : { seccion: 1, nombreBase: (nombre || "").trim() };
+}
+
+function construirFilasCatalogo(year, semStr) {
+  const semPar = semStr === "Otoño" ? "O" : "P";
+  const oferta = (state.data["oferta_" + year] || []).filter((r) => r.sem_par === semPar);
+  const entries = buildGrid(year, semStr).filter((e) => e.fuente === "Transporte " + year);
+
+  const horarioPorGrupo = new Map(); // "codigo|seccion" -> {catedra:[], auxiliar:[]}
+  entries.forEach((e) => {
+    if (!e.codigo || !esCodigoOficial(e.codigo)) return;
+    const { seccion } = seccionYNombreBase(e.nombre);
+    const gkey = `${e.codigo}|${seccion}`;
+    if (!horarioPorGrupo.has(gkey)) horarioPorGrupo.set(gkey, { catedra: [], auxiliar: [] });
+    const h = horarioPorGrupo.get(gkey);
+    if (e.tipo === "Cátedra") h.catedra.push(e);
+    else if (e.tipo === "Auxiliar") h.auxiliar.push(e);
+  });
+
+  const grupos = new Map(); // "codigo|seccion" -> {codigo, seccion, nombreBase, profesores:[]}
+  oferta.forEach((r) => {
+    if (!r.codigo || !esCodigoOficial(r.codigo)) return;
+    const { seccion, nombreBase } = seccionYNombreBase(r.nombre);
+    const gkey = `${r.codigo}|${seccion}`;
+    if (!grupos.has(gkey)) grupos.set(gkey, { codigo: r.codigo, seccion, nombreBase, profesores: [] });
+    const g = grupos.get(gkey);
+    if (r.profesor && !g.profesores.includes(r.profesor)) g.profesores.push(r.profesor);
+  });
+
+  const filas = [];
+  Array.from(grupos.values())
+    .sort((a, b) => a.codigo.localeCompare(b.codigo) || a.seccion - b.seccion)
+    .forEach((g) => {
+      const meta = getCatalogoMetadata(g.codigo, g.seccion);
+      const nombreBase = (meta && meta.Nombre_base) || g.nombreBase;
+      const nombreProfesor = (meta && meta.Nombre_profesor_catedra) || g.profesores.join("; ");
+      const h = horarioPorGrupo.get(`${g.codigo}|${g.seccion}`) || { catedra: [], auxiliar: [] };
+      filas.push({
+        fila: {
+          "ENCARGADO/A": "BASTIÁN",
+          "ESTADO (OK/PENDIENTE)": (meta && meta.Estado) || null,
+          "NOMBRE CURSO": `${g.codigo} ${nombreBase}`.trim(),
+          "CÓDIGO CURSO": g.codigo,
+          "SECCIÓN": g.seccion,
+          "CRÉDITOS (SCT)": (meta && meta.Requisitos) || null,
+          "COMENTARIO PARA OFERTAR EL CURSO (Ej. Se dicta desde la segunda mitad del semestre)": (meta && meta.Comentario_ofertar) || null,
+          "CUPOS ESTUDIANTES DE PREGRADO": (meta && meta.Cupos_pregrado) || null,
+          "CUPOS PARA MOVILIDAD NACIONAL E INTERNACIONAL ESTUDIANTIL ": (meta && meta.Cupos_movilidad) || null,
+          "CUPOS PARA PRESTACIONES DE SERVICIO A ESTUDIANTES DE OTRA FACULTAD UCHILE": (meta && meta.Cupos_prestaciones) || null,
+          "HORARIO DE CÁTEDRA (NORMAL Ej. 2.3, 4.3) (EXTENDIDO Ej. 2.3*, 4.3*)": formatDiaPeriodo(h.catedra) || null,
+          "HORARIO AUXILIAR (NORMAL Ej. 2.3, 4.3) (EXTENDIDO Ej. 2.3*, 4.3*)": formatDiaPeriodo(h.auxiliar) || null,
+          "HORARIO LABORATORIO (NORMAL Ej. 2.3, 4.3) (EXTENDIDO Ej. 2.3*, 4.3*)": null,
+          "NOMBRE PROFESOR(A) DE CÁTEDRA": nombreProfesor || null,
+          "RUT PROFESOR(A) DE CÁTEDRA": (meta && meta.RUT_profesor_catedra) || null,
+          "CORREO DE CONTACTO DE PROFESOR(A) DE CÁTEDRA": (meta && meta.Correo_profesor_catedra) || null,
+          "RUT PROFESOR(A) COORDINADOR(A)": (meta && meta.RUT_coordinador) || null,
+          "NOMBRE PROFESOR(A) COORDINADOR(A)": (meta && meta.Nombre_coordinador) || null,
+          "CORREO DE CONTACTO DE PROFESOR(A) COORDINADOR(A)": (meta && meta.Correo_coordinador) || null,
+          "CANTIDAD DE EVALUACIONES TIPO CONTROL": (meta && meta.Cantidad_evaluaciones_control) || null,
+          "REALIZA EXÁMEN SI/NO": (meta && meta.Realiza_examen) || null,
+          "REALIZA ENCUESTA SI/NO": (meta && meta.Realiza_encuesta) || null,
+          "COMENTARIO PARA EQUIPO DE GESTIÓN DOCENTE": (meta && meta.Comentario_gestion_docente) || null,
+        },
+        alertas: {
+          sinMetadata: !meta,
+          sinRut: !(meta && meta.RUT_profesor_catedra),
+          sinCorreo: !(meta && meta.Correo_profesor_catedra),
+          sinCupos: !(meta && meta.Cupos_pregrado),
+          sinRequisitos: !(meta && meta.Requisitos),
+        },
+      });
+    });
+  return filas;
+}
+
+function descargarCatalogoXLSX() {
+  const filas = construirFilasCatalogo(state.year, state.sem);
+  if (filas.length === 0) return null;
+  const numSem = state.sem === "Otoño" ? "1" : "2";
+  const titulo = `CATALOGO ${state.sem.toUpperCase()} ${state.year}/${numSem} FCFM - DEPARTAMENTO: INGENIERIA CIVIL `;
+  const aoa = [
+    [titulo],
+    CATALOGO_HEADERS,
+    ...filas.map((f) => CATALOGO_HEADERS.map((h) => (f.fila[h] === undefined ? null : f.fila[h]))),
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: CATALOGO_HEADERS.length - 1 } }];
+  ws["!cols"] = CATALOGO_HEADERS.map(() => ({ wch: 22 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "CATÁLOGO");
+  XLSX.writeFile(wb, `Catalogo_${state.sem}_${state.year}.xlsx`);
+  return filas;
+}
+
 // ---------- Buscador de horario ----------
 // Junta TODAS las entradas (Transporte + malla completa de la Facultad + cursos agregados a
 // mano), sin aplicar los filtros de scope/departamento/semestre de malla que tiene la vista
@@ -1052,7 +1203,26 @@ function renderHorario() {
     draw();
     actualizarContadorHorario();
   });
-  const horarioToolbar = el("div", { class: "instr-toolbar" }, [btnDescargarHorario, btnResetHorario, contador]);
+  const catalogoStatus = el("p", { class: "subtitle", style: "margin-top:6px" }, "");
+  const btnDescargarCatalogo = el("button", { class: "btn" }, "Descargar catálogo oficial (.xlsx)");
+  btnDescargarCatalogo.addEventListener("click", () => {
+    const filas = descargarCatalogoXLSX();
+    if (!filas) {
+      catalogoStatus.textContent = "No hay cursos de Transporte para el año/semestre seleccionados (revisa Año/Semestre arriba).";
+      return;
+    }
+    const sinCupos = filas.filter((f) => f.alertas.sinCupos).map((f) => `${f.fila["CÓDIGO CURSO"]} secc. ${f.fila["SECCIÓN"]}`);
+    const sinRutCorreo = filas.filter((f) => f.alertas.sinRut || f.alertas.sinCorreo).map((f) => `${f.fila["CÓDIGO CURSO"]} secc. ${f.fila["SECCIÓN"]}`);
+    const sinRequisitos = filas.filter((f) => f.alertas.sinRequisitos).map((f) => `${f.fila["CÓDIGO CURSO"]} secc. ${f.fila["SECCIÓN"]}`);
+    const avisos = [];
+    if (sinRutCorreo.length) avisos.push(`sin RUT/correo: ${sinRutCorreo.join(", ")}`);
+    if (sinCupos.length) avisos.push(`sin cupos de pregrado: ${sinCupos.join(", ")}`);
+    if (sinRequisitos.length) avisos.push(`sin requisitos: ${sinRequisitos.join(", ")}`);
+    catalogoStatus.textContent = avisos.length
+      ? `✅ Descargado con ${filas.length} curso(s). Atención, falta completar — ${avisos.join("; ")}.`
+      : `✅ Descargado con ${filas.length} curso(s), todos con RUT/correo/cupos/requisitos completos.`;
+  });
+  const horarioToolbar = el("div", { class: "instr-toolbar" }, [btnDescargarHorario, btnResetHorario, btnDescargarCatalogo, contador]);
 
   const gridContainer = el("div", {});
   const conflictContainer = el("div", { style: "margin-top:16px" });
@@ -1062,6 +1232,7 @@ function renderHorario() {
     "Arrastra un curso y suéltalo en otra celda para moverlo, o usa el botón \"+\" de una celda para agregar un curso nuevo directamente ahí; los cambios quedan guardados en este navegador."));
   card.appendChild(controls);
   card.appendChild(horarioToolbar);
+  card.appendChild(catalogoStatus);
   card.appendChild(gridContainer);
   card.appendChild(conflictContainer);
   c.appendChild(card);
@@ -1460,7 +1631,7 @@ function renderCargarDatos() {
 
 function handleFile(file, status) {
   if (typeof XLSX === "undefined") {
-    status.textContent = "❌ No se pudo cargar el lector de Excel (vendor/xlsx.full.min.js). Verifica que esa carpeta se haya publicado junto al sitio.";
+    status.textContent = "❌ No se pudo cargar el lector de Excel (xlsx.full.min.js). Verifica que esa carpeta se haya publicado junto al sitio.";
     return;
   }
   status.textContent = "Procesando " + file.name + "…";
