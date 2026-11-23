@@ -432,14 +432,34 @@ function getPeriodoInfo(periodo) {
   return state.data.periodos.find((p) => String(p["Período"]) === String(periodo)) || {};
 }
 
+// Código -> { semestre_cohorte, programa } usando la primera fila encontrada en malla_completa
+// para ese código. Se usa para que el filtro "Semestre de malla" también aplique a los cursos
+// de la oferta propia de Transporte (no sólo a los cursos "extra" de otros departamentos):
+// un curso como CI4246 (semestre IX) vive tanto en Oferta_"año" (con horario/profesor) como en
+// Malla_completa (con su posición en la malla), y ambas vistas deben coincidir.
+function getMallaSemestreMap() {
+  const map = {};
+  (state.data.malla_completa || []).forEach((r) => {
+    if (r.codigo && !(r.codigo in map)) {
+      map[r.codigo] = { semestre_cohorte: r.semestre_cohorte, programa: r.programa };
+    }
+  });
+  return map;
+}
+
 function buildGrid(year, sem) {
   const semPar = sem === "Otoño" ? "O" : "P";
   const ofertaKey = "oferta_" + year;
   const oferta = state.data[ofertaKey] || [];
   const transCodes = new Set(oferta.map((r) => r.codigo).filter(Boolean));
+  const mallaMap = getMallaSemestreMap();
 
   const entries = []; // {dia, periodo, codigo, nombre, fuente, ext, tipo, moveKey, movido}
   oferta.filter((r) => r.sem_par === semPar).forEach((r) => {
+    if (state.scope === "malla" && r.codigo && mallaMap[r.codigo]) {
+      const sc = mallaMap[r.codigo].semestre_cohorte;
+      if (sc !== null && sc !== undefined && sc !== "" && !state.semFilter.has(sc)) return;
+    }
     const key = r.codigo || r.nombre;
     (r.catedra || []).forEach((s, idx) => {
       const mk = moveKey(year, key, "catedra", idx);
