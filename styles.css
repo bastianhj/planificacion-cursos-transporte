@@ -290,7 +290,6 @@ table.grid td.slot .curso-nombre {
   opacity: 0.9;
 }
 table.grid td.slot .curso.ext { border: 1px dashed var(--azul); }
-table.grid td.slot .curso.movido { outline: 2px dashed #E8A33D; outline-offset: 1px; }
 table.grid td.slot .curso.dragging { opacity: 0.35; }
 table.grid td.slot.dragover { outline: 2px dashed var(--azul-oscuro); outline-offset: -2px; background: var(--azul-claro); }
 table.grid td.slot.conflicto { background: var(--rojo-claro); }

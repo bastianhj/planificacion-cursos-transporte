@@ -694,8 +694,8 @@ function renderHorario() {
         items.forEach((i) => {
           const tipoClass = i.tipo === "Auxiliar" ? "tipo-auxiliar" : i.tipo === "Cátedra" ? "tipo-catedra" : "";
           const span = el("span", {
-            class: `curso ${tipoClass} ${i.ext ? "ext" : ""} ${i.movido ? "movido" : ""}`,
-            title: `${i.codigo ? i.codigo + " — " : ""}${i.nombre} — ${i.fuente} (${i.tipo})${i.profesor ? " — " + i.profesor : ""}${i.movido ? " [horario movido]" : ""}`,
+            class: `curso ${tipoClass} ${i.ext ? "ext" : ""}`,
+            title: `${i.codigo ? i.codigo + " — " : ""}${i.nombre} — ${i.fuente} (${i.tipo})${i.profesor ? " — " + i.profesor : ""}`,
           });
           if (i.moveKey) {
             span.draggable = true;
@@ -726,7 +726,6 @@ function renderHorario() {
       el("span", {}, [el("span", { class: "sw", style: "background:var(--azul)" }), "Cátedra (color sólido)"]),
       el("span", {}, [el("span", { class: "sw", style: "background:rgba(46,117,182,0.22);border:1px solid rgba(46,117,182,0.4)" }), "Auxiliar (más transparente)"]),
       el("span", {}, [el("span", { class: "sw", style: "background:#FCE4E4" }), "Choque de horario (2+ cursos distintos)"]),
-      el("span", {}, [el("span", { class: "sw", style: "background:#fff;outline:2px dashed #E8A33D" }), "Movido manualmente"]),
       el("span", {}, "* contorno punteado = horario extendido · arrastra un curso para moverlo"),
     ]));
     actualizarContadorHorario();
