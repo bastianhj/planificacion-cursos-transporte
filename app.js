@@ -62,6 +62,7 @@ function restoreOriginal(skipCargar) {
   localStorage.removeItem(STORAGE_KEY);
   initInstrucciones();
   initHorarioMods();
+  initHorarioAdds();
   renderAll(skipCargar);
 }
 
@@ -179,9 +180,56 @@ function moverCurso(entry, diaNuevo, periodoNuevo) {
   return true;
 }
 
+// Cursos agregados a mano directamente en la grilla (botón "+" de una celda). A diferencia
+// de horarioMods (que registra el movimiento de un curso que YA existe en las planillas),
+// esto crea un curso que no viene de ninguna planilla: vive solo en este navegador hasta que
+// se descarga el .json de cambios y se le pide a Claude que lo agregue a las planillas.
+const HORARIO_ADDS_STORAGE_KEY = "tpte_horario_adds_v1";
+let horarioAdds = {}; // id -> {id, year, semPar, dia, periodo, tipo, codigo, nombre, profesor}
+
+function persistHorarioAdds() {
+  localStorage.setItem(HORARIO_ADDS_STORAGE_KEY, JSON.stringify(horarioAdds));
+}
+
+function initHorarioAdds() {
+  const saved = localStorage.getItem(HORARIO_ADDS_STORAGE_KEY);
+  if (saved) {
+    try { horarioAdds = JSON.parse(saved); } catch (e) { horarioAdds = {}; }
+  } else {
+    horarioAdds = {};
+  }
+}
+
+function agregarCurso({ year, semPar, dia, periodo, tipo, codigo, nombre, profesor }) {
+  const id = `add-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  horarioAdds[id] = {
+    id, year, semPar, dia, periodo, tipo,
+    codigo: (codigo || "").trim(), nombre: (nombre || "").trim(), profesor: (profesor || "").trim(),
+  };
+  persistHorarioAdds();
+  return id;
+}
+
+function moverCursoAgregado(id, diaNuevo, periodoNuevo) {
+  const a = horarioAdds[id];
+  if (!a) return false;
+  a.dia = diaNuevo;
+  a.periodo = periodoNuevo;
+  persistHorarioAdds();
+  return true;
+}
+
+function eliminarCursoAgregado(id) {
+  if (!horarioAdds[id]) return;
+  delete horarioAdds[id];
+  persistHorarioAdds();
+}
+
 function restablecerHorario() {
   horarioMods = {};
+  horarioAdds = {};
   persistHorarioMods();
+  persistHorarioAdds();
 }
 
 function descargarCambiosHorario() {
@@ -190,14 +238,21 @@ function descargarCambiosHorario() {
     antes: `${DIAS[m.diaOriginal - 1] || "?"} P${m.periodoOriginal}`,
     despues: `${DIAS[m.dia - 1] || "?"} P${m.periodo}`,
   }));
-  if (!cambios.length) return 0;
+  const agregados = Object.values(horarioAdds).map((a) => ({
+    curso: a.codigo || null, nombre: a.nombre, tipo: a.tipo, profesor: a.profesor || null,
+    año: a.year, semestre: a.semPar === "O" ? "Otoño" : "Primavera",
+    en: `${DIAS[a.dia - 1] || "?"} P${a.periodo}`,
+  }));
+  if (!cambios.length && !agregados.length) return 0;
   const payload = {
     generado: new Date().toLocaleString("es-CL"),
-    nota: "Cambios de horario hechos arrastrando cursos en la vista 'Horario y choques' de la app de " +
-          "Planificación de Cursos — Transporte UChile. Pásale este archivo a Claude junto con las " +
-          "planillas originales para que aplique estos cambios de horario en Cursos_v2.xlsx / " +
-          "Cursos_transporte_2025-2026.xlsx.",
+    nota: "Cambios hechos en la vista 'Horario y choques' de la app de Planificación de Cursos — " +
+          "Transporte UChile. 'cambios' son cursos ya existentes que se arrastraron a otro horario; " +
+          "'agregados' son cursos nuevos creados a mano con el botón '+' de la grilla y que todavía no " +
+          "están en ninguna planilla. Pásale este archivo a Claude junto con las planillas originales " +
+          "para que aplique estos cambios en Cursos_v2.xlsx / Cursos_transporte_2025-2026.xlsx.",
     cambios,
+    agregados,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -206,7 +261,7 @@ function descargarCambiosHorario() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  return cambios.length;
+  return cambios.length + agregados.length;
 }
 
 // ---------- utilidades ----------
@@ -515,12 +570,112 @@ function buildGrid(year, sem) {
         });
       });
   }
+
+  // Cursos agregados a mano con el botón "+" de la grilla (ver horarioAdds): se muestran
+  // siempre que coincidan con el año y semestre vigentes, sin importar scope/depto/semestre
+  // de malla — el usuario los agregó explícitamente a esta vista.
+  Object.values(horarioAdds)
+    .filter((a) => a.year === year && a.semPar === semPar)
+    .forEach((a) => {
+      entries.push({
+        dia: a.dia, periodo: a.periodo, ext: false,
+        codigo: a.codigo || null, nombre: a.nombre, fuente: "Agregado manualmente",
+        tipo: a.tipo, profesor: a.profesor || "", agregadoId: a.id,
+      });
+    });
+
   return entries;
 }
 
 function dayNameToNum(name) {
   const idx = DIAS.indexOf(name);
   return idx >= 0 ? idx + 1 : null;
+}
+
+// ---------- popover "Agregar curso" de la grilla de Horario ----------
+let _popoverAgregar = null;
+
+function _onPopoverAgregarKeydown(ev) {
+  if (ev.key === "Escape") cerrarPopoverAgregar();
+}
+
+function _onPopoverAgregarOutsideClick(ev) {
+  if (_popoverAgregar && !_popoverAgregar.el.contains(ev.target) && ev.target !== _popoverAgregar.anchor) {
+    cerrarPopoverAgregar();
+  }
+}
+
+function cerrarPopoverAgregar() {
+  if (!_popoverAgregar) return;
+  _popoverAgregar.el.remove();
+  document.removeEventListener("keydown", _onPopoverAgregarKeydown);
+  document.removeEventListener("mousedown", _onPopoverAgregarOutsideClick, true);
+  _popoverAgregar = null;
+}
+
+function abrirPopoverAgregar(anchorEl, dia, periodo, onConfirm) {
+  cerrarPopoverAgregar();
+  const rect = anchorEl.getBoundingClientRect();
+
+  const nombreInput = el("input", { type: "text", placeholder: "Ej. Taller de Geomática" });
+  const codigoInput = el("input", { type: "text", placeholder: "Ej. CI4999 (opcional)" });
+  const profesorInput = el("input", { type: "text", placeholder: "Opcional" });
+  const tipoSelect = el("select", {}, [
+    el("option", { value: "Cátedra" }, "Cátedra"),
+    el("option", { value: "Auxiliar" }, "Auxiliar"),
+  ]);
+  const errorMsg = el("div", { class: "popover-error" }, "");
+  const btnAgregar = el("button", { class: "btn", type: "button" }, "Agregar");
+  const btnCancelar = el("button", { class: "btn secondary", type: "button" }, "Cancelar");
+
+  btnAgregar.addEventListener("click", () => {
+    const nombre = nombreInput.value.trim();
+    if (!nombre) {
+      errorMsg.textContent = "Ingresa al menos el nombre del curso.";
+      nombreInput.focus();
+      return;
+    }
+    agregarCurso({
+      year: state.year, semPar: state.sem === "Otoño" ? "O" : "P",
+      dia, periodo, tipo: tipoSelect.value,
+      codigo: codigoInput.value, nombre, profesor: profesorInput.value,
+    });
+    cerrarPopoverAgregar();
+    if (onConfirm) onConfirm();
+  });
+  btnCancelar.addEventListener("click", cerrarPopoverAgregar);
+  nombreInput.addEventListener("keydown", (ev) => { if (ev.key === "Enter") btnAgregar.click(); });
+
+  const popEl = el("div", { class: "add-curso-popover" }, [
+    el("div", { class: "popover-title" }, `Agregar curso — ${DIAS[dia - 1]}, P${periodo}`),
+    el("label", {}, "Nombre"),
+    nombreInput,
+    el("label", {}, "Código"),
+    codigoInput,
+    el("label", {}, "Tipo"),
+    tipoSelect,
+    el("label", {}, "Profesor"),
+    profesorInput,
+    errorMsg,
+    el("div", { class: "popover-actions" }, [btnAgregar, btnCancelar]),
+  ]);
+  document.body.appendChild(popEl);
+
+  // Posicionar cerca del botón "+" que lo abrió, sin salirse de la ventana.
+  const pw = popEl.offsetWidth, ph = popEl.offsetHeight;
+  let left = rect.left + window.scrollX;
+  let top = rect.bottom + window.scrollY + 4;
+  if (left + pw > window.scrollX + window.innerWidth - 8) left = window.scrollX + window.innerWidth - pw - 8;
+  if (left < window.scrollX + 4) left = window.scrollX + 4;
+  if (top + ph > window.scrollY + window.innerHeight - 8) top = rect.top + window.scrollY - ph - 4;
+  popEl.style.left = `${left}px`;
+  popEl.style.top = `${top}px`;
+
+  _popoverAgregar = { el: popEl, anchor: anchorEl };
+  nombreInput.focus();
+  document.addEventListener("keydown", _onPopoverAgregarKeydown);
+  // Se agrega en el próximo tick para no capturar el mismo click que abrió el popover.
+  setTimeout(() => document.addEventListener("mousedown", _onPopoverAgregarOutsideClick, true), 0);
 }
 
 function renderHorario() {
@@ -612,20 +767,28 @@ function renderHorario() {
   controls.appendChild(semPills);
   controls.appendChild(semPillsBtns);
 
-  const contador = el("span", { class: "instr-contador" }, "");
+  const contador = el("span", { class: "horario-contador" }, "");
   function actualizarContadorHorario() {
-    const n = Object.keys(horarioMods).length;
-    contador.textContent = n === 0 ? "Sin cambios de horario." : `${n} curso(s) movido(s) respecto a la planilla.`;
+    const nMov = Object.keys(horarioMods).length;
+    const nAdd = Object.keys(horarioAdds).length;
+    if (nMov === 0 && nAdd === 0) {
+      contador.textContent = "Sin cambios de horario.";
+      return;
+    }
+    const partes = [];
+    if (nMov) partes.push(`${nMov} movido(s)`);
+    if (nAdd) partes.push(`${nAdd} agregado(s)`);
+    contador.textContent = `${partes.join(", ")} respecto a la planilla.`;
   }
   const btnDescargarHorario = el("button", { class: "btn" }, "Descargar cambios de horario (.json)");
   btnDescargarHorario.addEventListener("click", () => {
     const n = descargarCambiosHorario();
-    if (!n) alert("Todavía no has movido ningún curso en la grilla.");
+    if (!n) alert("Todavía no has movido ni agregado ningún curso en la grilla.");
   });
   const btnResetHorario = el("button", { class: "btn secondary" }, "Restablecer horario original");
   btnResetHorario.addEventListener("click", () => {
-    if (Object.keys(horarioMods).length === 0) return;
-    if (!confirm("¿Deshacer todos los cambios de horario hechos arrastrando cursos?")) return;
+    if (Object.keys(horarioMods).length === 0 && Object.keys(horarioAdds).length === 0) return;
+    if (!confirm("¿Deshacer todos los cambios de horario (cursos movidos y cursos agregados)?")) return;
     restablecerHorario();
     draw();
     actualizarContadorHorario();
@@ -637,7 +800,7 @@ function renderHorario() {
 
   card.appendChild(el("h2", {}, "Horario y choques"));
   card.appendChild(el("p", { class: "subtitle" }, "Grilla semanal día × período. Las celdas en rojo indican dos o más cursos distintos en el mismo horario. " +
-    "Arrastra un curso y suéltalo en otra celda para moverlo; el cambio queda guardado en este navegador."));
+    "Arrastra un curso y suéltalo en otra celda para moverlo, o usa el botón \"+\" de una celda para agregar un curso nuevo directamente ahí; los cambios quedan guardados en este navegador."));
   card.appendChild(controls);
   card.appendChild(horarioToolbar);
   card.appendChild(gridContainer);
@@ -645,6 +808,7 @@ function renderHorario() {
   c.appendChild(card);
 
   function draw() {
+    cerrarPopoverAgregar();
     const entries = buildGrid(state.year, state.sem);
     const cellMap = {}; // `${dia}-${periodo}` -> [entries]
     entries.forEach((e) => {
@@ -683,12 +847,21 @@ function renderHorario() {
         td.addEventListener("drop", (ev) => {
           ev.preventDefault();
           td.classList.remove("dragover");
-          const mk = ev.dataTransfer.getData("text/plain");
-          const entry = (state._dragEntries || {})[mk];
-          if (!entry) return;
-          if (moverCurso(entry, d, p)) {
-            draw();
-            actualizarContadorHorario();
+          const raw = ev.dataTransfer.getData("text/plain");
+          if (!raw) return;
+          if (raw.startsWith("add:")) {
+            if (moverCursoAgregado(raw.slice(4), d, p)) {
+              draw();
+              actualizarContadorHorario();
+            }
+          } else {
+            const mk = raw.startsWith("mod:") ? raw.slice(4) : raw;
+            const entry = (state._dragEntries || {})[mk];
+            if (!entry) return;
+            if (moverCurso(entry, d, p)) {
+              draw();
+              actualizarContadorHorario();
+            }
           }
         });
         items.forEach((i) => {
@@ -697,21 +870,45 @@ function renderHorario() {
             class: `curso ${tipoClass} ${i.ext ? "ext" : ""}`,
             title: `${i.codigo ? i.codigo + " — " : ""}${i.nombre} — ${i.fuente} (${i.tipo})${i.profesor ? " — " + i.profesor : ""}`,
           });
-          if (i.moveKey) {
+          if (i.moveKey || i.agregadoId) {
             span.draggable = true;
-            state._dragEntries = state._dragEntries || {};
-            state._dragEntries[i.moveKey] = i;
+            const dragPayload = i.agregadoId ? "add:" + i.agregadoId : "mod:" + i.moveKey;
+            if (i.moveKey) {
+              state._dragEntries = state._dragEntries || {};
+              state._dragEntries[i.moveKey] = i;
+            }
             span.addEventListener("dragstart", (ev) => {
-              ev.dataTransfer.setData("text/plain", i.moveKey);
+              ev.dataTransfer.setData("text/plain", dragPayload);
               ev.dataTransfer.effectAllowed = "move";
               span.classList.add("dragging");
             });
             span.addEventListener("dragend", () => span.classList.remove("dragging"));
           }
-          span.appendChild(el("span", { class: "curso-codigo" }, i.codigo || ""));
+          const header = el("span", { class: "curso-header" }, [
+            el("span", { class: "curso-codigo" }, i.codigo || ""),
+          ]);
+          if (i.agregadoId) {
+            const delBtn = el("span", { class: "curso-del", title: "Quitar este curso agregado" }, "×");
+            delBtn.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              eliminarCursoAgregado(i.agregadoId);
+              draw();
+              actualizarContadorHorario();
+            });
+            header.appendChild(delBtn);
+          }
+          span.appendChild(header);
           if (i.nombre) span.appendChild(el("span", { class: "curso-nombre" }, i.nombre));
           td.appendChild(span);
         });
+        const addBtn = el("button", {
+          class: "slot-add-btn", type: "button", title: "Agregar un curso en este horario",
+        }, "+");
+        addBtn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          abrirPopoverAgregar(addBtn, d, p, () => { draw(); actualizarContadorHorario(); });
+        });
+        td.appendChild(addBtn);
         tr.appendChild(td);
         if (isConflict) {
           conflictRows.push({ dia: DIAS[d - 1], periodo: p, items });
@@ -964,6 +1161,7 @@ function handleFile(file, status) {
       persist();
       initInstrucciones();
       initHorarioMods();
+      initHorarioAdds();
       status.textContent = "✅ Datos actualizados desde " + file.name + ".";
       renderAll(true);
     } catch (err) {
@@ -1079,6 +1277,7 @@ window.addEventListener("DOMContentLoaded", () => {
   loadInitialData();
   initInstrucciones();
   initHorarioMods();
+  initHorarioAdds();
   setupTabs();
   renderAll();
 });

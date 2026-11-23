@@ -179,7 +179,8 @@ button.btn:hover { opacity: 0.9; }
   margin: 10px 0 14px;
 }
 
-.instr-contador {
+.instr-contador,
+.horario-contador {
   font-size: 0.82rem;
   color: var(--gris-700);
 }
@@ -251,9 +252,61 @@ table.grid th, table.grid td {
 }
 table.grid th { background: var(--gris-100); text-align: center; color: var(--azul-oscuro); }
 table.grid td.periodo-lbl { background: var(--gris-100); text-align: center; font-weight: 600; color: var(--gris-700); width: 90px; }
-table.grid td.slot { cursor: default; transition: outline-color .1s ease; }
+table.grid td.slot { cursor: default; transition: outline-color .1s ease; position: relative; }
+table.grid td.slot .curso-header { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+table.grid td.slot .curso-del {
+  opacity: 0.75;
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1;
+  flex: none;
+}
+table.grid td.slot .curso-del:hover { opacity: 1; }
+.slot-add-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  padding: 0;
+  border: 1px solid var(--gris-400);
+  border-radius: 50%;
+  background: white;
+  color: var(--gris-700);
+  font-size: 0.72rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+table.grid td.slot:hover .slot-add-btn { opacity: 0.85; }
+.slot-add-btn:hover { opacity: 1 !important; background: var(--azul-claro); border-color: var(--azul); color: var(--azul-oscuro); }
+.add-curso-popover {
+  position: absolute;
+  z-index: 50;
+  background: white;
+  border: 1px solid var(--gris-200);
+  border-radius: var(--radio);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  padding: 12px;
+  width: 240px;
+  font-size: 0.82rem;
+}
+.add-curso-popover .popover-title { font-weight: 600; margin-bottom: 8px; color: var(--azul-oscuro); }
+.add-curso-popover label { display: block; margin: 6px 0 2px; font-size: 0.76rem; color: var(--gris-700); }
+.add-curso-popover input, .add-curso-popover select {
+  width: 100%;
+  border: 1px solid var(--gris-400);
+  border-radius: 6px;
+  padding: 5px 7px;
+  font-size: 0.82rem;
+}
+.add-curso-popover .popover-error { color: var(--rojo); font-size: 0.74rem; min-height: 1em; margin-top: 4px; }
+.add-curso-popover .popover-actions { display: flex; gap: 6px; margin-top: 10px; }
+.add-curso-popover .popover-actions .btn { flex: 1; padding: 6px 8px; font-size: 0.8rem; }
 table.grid td.slot .curso {
   display: block;
+  position: relative;
   border-radius: 5px;
   padding: 2px 5px;
   margin-bottom: 2px;
