@@ -2332,12 +2332,12 @@ const DATA = {
     },
     {
      "dia": 4,
-     "periodo": 3,
+     "periodo": 4,
      "ext": false
     }
    ],
    "auxiliar": [],
-   "catedra_txt": "Martes P4; Jueves P3",
+   "catedra_txt": "Martes P4; Jueves P4",
    "auxiliar_txt": "",
    "profesor": "Diego Candia",
    "creditos": 6,
@@ -2358,12 +2358,12 @@ const DATA = {
     },
     {
      "dia": 4,
-     "periodo": 3,
+     "periodo": 4,
      "ext": false
     }
    ],
    "auxiliar": [],
-   "catedra_txt": "Martes P4; Jueves P3",
+   "catedra_txt": "Martes P4; Jueves P4",
    "auxiliar_txt": "",
    "profesor": "Bastián Henríquez",
    "creditos": 6,
@@ -3773,7 +3773,7 @@ const DATA = {
    "semestre_cohorte": "E",
    "sem_par": "O",
    "dia": 4,
-   "periodo": 3,
+   "periodo": 4,
    "nota": ""
   },
   {
@@ -7605,26 +7605,6 @@ const DATA = {
    "Instrucción de corrección": ""
   },
   {
-   "ID": "H-96da14a8a1",
-   "Severidad": "Media",
-   "Tipo": "Pondera no calza con créditos",
-   "Curso": "CI6304 Seminario de Ingeniería de Transporte",
-   "Descripción": "La suma de 'Pondera' en Carga Docente para este curso es 0, pero para 6 créditos debería ser 1.0 (pondera = créditos/6).",
-   "Fuente(s)": "Carga Docente.xlsx (hoja Cursos 2027)",
-   "Recomendación": "Revisar y corregir la pondera de los profesores de este curso.",
-   "Instrucción de corrección": "Está bien"
-  },
-  {
-   "ID": "H-96da14a8a1",
-   "Severidad": "Media",
-   "Tipo": "Pondera no calza con créditos",
-   "Curso": "CI6304 Seminario de Ingeniería de Transporte",
-   "Descripción": "La suma de 'Pondera' en Carga Docente para este curso es 0, pero para 6 créditos debería ser 1.0 (pondera = créditos/6).",
-   "Fuente(s)": "Carga Docente.xlsx (hoja Cursos 2027)",
-   "Recomendación": "Revisar y corregir la pondera de los profesores de este curso.",
-   "Instrucción de corrección": "Está bien"
-  },
-  {
    "ID": "H-c41b96f9b0",
    "Severidad": "Media",
    "Tipo": "Curso ausente en Carga Docente",
@@ -7633,6 +7613,26 @@ const DATA = {
    "Fuente(s)": "Cursos_transporte_2025-2026.xlsx",
    "Recomendación": "Agregar la fila correspondiente en Carga Docente para no perder el cálculo de carga.",
    "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-96da14a8a1",
+   "Severidad": "Media",
+   "Tipo": "Pondera no calza con créditos",
+   "Curso": "CI6304 Seminario de Ingeniería de Transporte",
+   "Descripción": "La suma de 'Pondera' en Carga Docente para este curso es 0, pero para 6 créditos debería ser 1.0 (pondera = créditos/6).",
+   "Fuente(s)": "Carga Docente.xlsx (hoja Cursos 2027)",
+   "Recomendación": "Revisar y corregir la pondera de los profesores de este curso.",
+   "Instrucción de corrección": "Está bien"
+  },
+  {
+   "ID": "H-96da14a8a1",
+   "Severidad": "Media",
+   "Tipo": "Pondera no calza con créditos",
+   "Curso": "CI6304 Seminario de Ingeniería de Transporte",
+   "Descripción": "La suma de 'Pondera' en Carga Docente para este curso es 0, pero para 6 créditos debería ser 1.0 (pondera = créditos/6).",
+   "Fuente(s)": "Carga Docente.xlsx (hoja Cursos 2027)",
+   "Recomendación": "Revisar y corregir la pondera de los profesores de este curso.",
+   "Instrucción de corrección": "Está bien"
   },
   {
    "ID": "H-7a92b4ac9a",
