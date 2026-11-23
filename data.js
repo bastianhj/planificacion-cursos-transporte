@@ -1545,12 +1545,12 @@ const DATA = {
    "nombre": "Análisis de Sistemas de Transporte (S2)",
    "catedra": [
     {
-     "dia": 1,
+     "dia": 2,
      "periodo": 3,
      "ext": false
     },
     {
-     "dia": 5,
+     "dia": 4,
      "periodo": 3,
      "ext": false
     }
@@ -1562,7 +1562,7 @@ const DATA = {
      "ext": false
     }
    ],
-   "catedra_txt": "Lunes P3; Viernes P3",
+   "catedra_txt": "Martes P3; Jueves P3",
    "auxiliar_txt": "Martes P5",
    "profesor": "Francisco Martínez",
    "creditos": 6,
@@ -2331,13 +2331,13 @@ const DATA = {
      "ext": false
     },
     {
-     "dia": 4,
-     "periodo": 4,
+     "dia": 5,
+     "periodo": 5,
      "ext": false
     }
    ],
    "auxiliar": [],
-   "catedra_txt": "Martes P4; Jueves P4",
+   "catedra_txt": "Martes P4; Viernes P5",
    "auxiliar_txt": "",
    "profesor": "Diego Candia",
    "creditos": 6,
@@ -2357,13 +2357,13 @@ const DATA = {
      "ext": false
     },
     {
-     "dia": 4,
-     "periodo": 4,
+     "dia": 5,
+     "periodo": 5,
      "ext": false
     }
    ],
    "auxiliar": [],
-   "catedra_txt": "Martes P4; Jueves P4",
+   "catedra_txt": "Martes P4; Viernes P5",
    "auxiliar_txt": "",
    "profesor": "Bastián Henríquez",
    "creditos": 6,
@@ -3772,8 +3772,8 @@ const DATA = {
    "tipo": "C",
    "semestre_cohorte": "E",
    "sem_par": "O",
-   "dia": 4,
-   "periodo": 4,
+   "dia": 5,
+   "periodo": 5,
    "nota": ""
   },
   {
@@ -7591,9 +7591,73 @@ const DATA = {
    "dia": 3,
    "periodo": 5,
    "nota": ""
+  },
+  {
+   "codigo": "CI3141",
+   "programa": "CI",
+   "articulacion": 0,
+   "nombre": "Análisis de sistemas de transporte",
+   "tipo": "C",
+   "semestre_cohorte": 5,
+   "sem_par": "O",
+   "dia": 2,
+   "periodo": 3,
+   "nota": ""
+  },
+  {
+   "codigo": "CI3141",
+   "programa": "CI",
+   "articulacion": 0,
+   "nombre": "Análisis de sistemas de transporte",
+   "tipo": "C",
+   "semestre_cohorte": 5,
+   "sem_par": "O",
+   "dia": 4,
+   "periodo": 3,
+   "nota": ""
   }
  ],
  "chequeo": [
+  {
+   "ID": "H-d8c1d84ac5",
+   "Severidad": "Alta",
+   "Tipo": "Horario no coincide",
+   "Curso": "CI3141 Análisis de Sistemas de Transporte",
+   "Descripción": "[2025, Otoño] Cátedra: Cursos_transporte=Lunes P3; Viernes P3 vs Cursos_v2=Lunes P3; Martes P3; Jueves P3; Viernes P3. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
+   "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-d0bf5ee9ee",
+   "Severidad": "Alta",
+   "Tipo": "Horario no coincide",
+   "Curso": "CI3141 Análisis de Sistemas de Transporte",
+   "Descripción": "[2026, Otoño] Cátedra: Cursos_transporte=Lunes P3; Viernes P3 vs Cursos_v2=Lunes P3; Martes P3; Jueves P3; Viernes P3. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
+   "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-9b5162b829",
+   "Severidad": "Alta",
+   "Tipo": "Horario no coincide",
+   "Curso": "CI3141 Análisis de Sistemas de Transporte (S1)",
+   "Descripción": "[2027, Otoño] Cátedra: Cursos_transporte=Lunes P3; Viernes P3 vs Cursos_v2=Lunes P3; Martes P3; Jueves P3; Viernes P3. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
+   "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-9ef8bdd286",
+   "Severidad": "Alta",
+   "Tipo": "Horario no coincide",
+   "Curso": "CI3141 Análisis de Sistemas de Transporte (S2)",
+   "Descripción": "[2027, Otoño] Cátedra: Cursos_transporte=Martes P3; Jueves P3 vs Cursos_v2=Lunes P3; Martes P3; Jueves P3; Viernes P3. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
+   "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
+   "Instrucción de corrección": ""
+  },
   {
    "ID": "H-3fb7d504ae",
    "Severidad": "Alta",
@@ -7605,16 +7669,6 @@ const DATA = {
    "Instrucción de corrección": ""
   },
   {
-   "ID": "H-c41b96f9b0",
-   "Severidad": "Media",
-   "Tipo": "Curso ausente en Carga Docente",
-   "Curso": "CIXXX Transporte y Sociedad (None)",
-   "Descripción": "Aparece en Cursos_transporte (hoja 2027) pero no en Carga Docente / Cursos 2027.",
-   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx",
-   "Recomendación": "Agregar la fila correspondiente en Carga Docente para no perder el cálculo de carga.",
-   "Instrucción de corrección": ""
-  },
-  {
    "ID": "H-96da14a8a1",
    "Severidad": "Media",
    "Tipo": "Pondera no calza con créditos",
@@ -7623,6 +7677,16 @@ const DATA = {
    "Fuente(s)": "Carga Docente.xlsx (hoja Cursos 2027)",
    "Recomendación": "Revisar y corregir la pondera de los profesores de este curso.",
    "Instrucción de corrección": "Está bien"
+  },
+  {
+   "ID": "H-c41b96f9b0",
+   "Severidad": "Media",
+   "Tipo": "Curso ausente en Carga Docente",
+   "Curso": "CIXXX Transporte y Sociedad (None)",
+   "Descripción": "Aparece en Cursos_transporte (hoja 2027) pero no en Carga Docente / Cursos 2027.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx",
+   "Recomendación": "Agregar la fila correspondiente en Carga Docente para no perder el cálculo de carga.",
+   "Instrucción de corrección": ""
   },
   {
    "ID": "H-96da14a8a1",
