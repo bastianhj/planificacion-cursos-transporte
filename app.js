@@ -455,30 +455,44 @@ function buildGrid(year, sem) {
   const mallaMap = getMallaSemestreMap();
 
   const entries = []; // {dia, periodo, codigo, nombre, fuente, ext, tipo, moveKey, movido}
+  // Oferta_2027 trae una fila por curso+profesor (para poder repartir la "pondera" entre
+  // varios profesores de un mismo curso); eso significa que un curso con 2+ profesores
+  // aparece 2+ veces con el MISMO horario. Si no se deduplica, cada sesión de cátedra o
+  // auxiliar se dibuja una vez por profesor y el curso se ve "duplicado" en la grilla.
+  // seen: clave "codigo|tipo|dia|periodo" -> índice en entries, para fusionar esos casos
+  // (mismo curso, mismo tipo de clase, mismo día y período) en una sola celda, uniendo
+  // los nombres de los profesores.
+  const seen = new Map();
   oferta.filter((r) => r.sem_par === semPar).forEach((r) => {
-    if (state.scope === "malla" && r.codigo && mallaMap[r.codigo]) {
+    if (r.codigo && mallaMap[r.codigo]) {
       const sc = mallaMap[r.codigo].semestre_cohorte;
       if (sc !== null && sc !== undefined && sc !== "" && !state.semFilter.has(sc)) return;
     }
     const key = r.codigo || r.nombre;
-    (r.catedra || []).forEach((s, idx) => {
-      const mk = moveKey(year, key, "catedra", idx);
+    const addSesion = (s, idx, tipoLabel, tipoKey) => {
+      const mk = moveKey(year, key, tipoKey, idx);
       const mod = horarioMods[mk];
+      const dia = mod ? mod.dia : s.dia;
+      const periodo = mod ? mod.periodo : s.periodo;
+      const dupKey = `${r.codigo || r.nombre}|${tipoLabel}|${dia}|${periodo}`;
+      if (seen.has(dupKey)) {
+        const existing = entries[seen.get(dupKey)];
+        if (r.profesor && existing.profesor && !existing.profesor.includes(r.profesor)) {
+          existing.profesor += "; " + r.profesor;
+        } else if (r.profesor && !existing.profesor) {
+          existing.profesor = r.profesor;
+        }
+        return;
+      }
+      seen.set(dupKey, entries.length);
       entries.push({
-        dia: mod ? mod.dia : s.dia, periodo: mod ? mod.periodo : s.periodo, ext: mod ? false : s.ext,
-        codigo: r.codigo || r.nombre, nombre: r.nombre, fuente: "Transporte " + year, tipo: "Cátedra",
+        dia, periodo, ext: mod ? false : s.ext,
+        codigo: r.codigo || r.nombre, nombre: r.nombre, fuente: "Transporte " + year, tipo: tipoLabel,
         profesor: r.profesor, moveKey: mk, movido: !!mod,
       });
-    });
-    (r.auxiliar || []).forEach((s, idx) => {
-      const mk = moveKey(year, key, "auxiliar", idx);
-      const mod = horarioMods[mk];
-      entries.push({
-        dia: mod ? mod.dia : s.dia, periodo: mod ? mod.periodo : s.periodo, ext: mod ? false : s.ext,
-        codigo: r.codigo || r.nombre, nombre: r.nombre, fuente: "Transporte " + year, tipo: "Auxiliar",
-        profesor: r.profesor, moveKey: mk, movido: !!mod,
-      });
-    });
+    };
+    (r.catedra || []).forEach((s, idx) => addSesion(s, idx, "Cátedra", "catedra"));
+    (r.auxiliar || []).forEach((s, idx) => addSesion(s, idx, "Auxiliar", "auxiliar"));
   });
 
   if (state.scope === "malla") {
@@ -541,7 +555,7 @@ function renderHorario() {
     deptPills.appendChild(p);
   });
 
-  const semPills = el("div", { class: "pill-row sem-pills", style: state.scope === "malla" ? "" : "display:none" });
+  const semPills = el("div", { class: "pill-row sem-pills" });
   getAllSemestres().forEach((sv) => {
     const p = el("span", { class: `pill ${state.semFilter.has(sv) ? "active" : ""}` }, semLabel(sv));
     p.addEventListener("click", () => {
@@ -569,7 +583,7 @@ function renderHorario() {
   ]);
 
   const deptLabel = el("label", { style: state.scope === "malla" ? "" : "display:none" }, "Departamentos:");
-  const semLabelEl = el("label", { style: state.scope === "malla" ? "" : "display:none" }, "Semestre de malla:");
+  const semLabelEl = el("label", {}, "Semestre de malla:");
   const scopePills = el("div", { class: "pill-row" });
   [["transporte", "Solo Transporte"], ["malla", "Transporte + otros cursos de la Facultad"]].forEach(([val, lbl]) => {
     const p = el("span", { class: `pill ${state.scope === val ? "active" : ""}` }, lbl);
@@ -580,8 +594,8 @@ function renderHorario() {
       const show = state.scope === "malla";
       deptPills.style.display = show ? "" : "none";
       deptLabel.style.display = show ? "" : "none";
-      semPills.style.display = show ? "" : "none";
-      semLabelEl.style.display = show ? "" : "none";
+      // El filtro de semestre de malla aplica en ambos scopes (ver buildGrid), así que sus
+      // controles quedan siempre visibles.
       draw();
     });
     scopePills.appendChild(p);
