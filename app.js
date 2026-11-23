@@ -13,7 +13,32 @@ let state = {
   sem: "Otoño",
   scope: "transporte", // transporte | malla
   deptFilter: new Set(DEPTS), // departamentos visibles cuando scope === "malla"
+  semFilter: null, // semestres de malla visibles cuando scope === "malla" (se inicializa con todos al cargar los datos)
 };
+
+// Valores distintos de "semestre_cohorte" presentes en malla_completa, para los pills de filtro.
+// Los numéricos (posición en la malla) van primero y ascendentes; el resto (electivos, magísteres) al final.
+function getAllSemestres() {
+  // Solo se consideran los programas que el filtro de departamento también cubre (CI/IN/MA):
+  // otros programas (p. ej. "MGO", cursos de Magíster en Gestión de Operaciones) ya quedan
+  // fuera de la grilla por el filtro de departamento, así que no tiene sentido ofrecer un
+  // pill de semestre que nunca podría mostrar nada.
+  const vals = new Set((state.data.malla_completa || [])
+    .filter((r) => DEPTS.includes(r.programa))
+    .map((r) => r.semestre_cohorte)
+    .filter((v) => v !== null && v !== undefined && v !== ""));
+  return [...vals].sort((a, b) => {
+    const na = typeof a === "number", nb = typeof b === "number";
+    if (na && nb) return a - b;
+    if (na) return -1;
+    if (nb) return 1;
+    return String(a).localeCompare(String(b));
+  });
+}
+
+function semLabel(v) {
+  return typeof v === "number" ? `Sem. ${v}` : (v === "E" ? "Electivo" : String(v));
+}
 
 function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 
@@ -440,7 +465,7 @@ function buildGrid(year, sem) {
     const mallaScope = "malla-" + semPar;
     state.data.malla_completa
       .filter((r) => r.sem_par === semPar && !transCodes.has(r.codigo) && r.dia && r.periodo &&
-        state.deptFilter.has(r.programa))
+        state.deptFilter.has(r.programa) && state.semFilter.has(r.semestre_cohorte))
       .forEach((r, idx) => {
         // "dia" viene numérico (1-6) al cargar desde data.js, pero como nombre de día
         // ("Lunes"...) si se reconstruyó desde un .xlsx subido a mano: aceptamos ambos.
@@ -470,6 +495,8 @@ function renderHorario() {
   const card = el("div", { class: "card" });
   const controls = el("div", { class: "controls" });
 
+  if (state.semFilter === null) state.semFilter = new Set(getAllSemestres());
+
   const yearSel = el("select", {}, ["2025", "2026", "2027"].map((y) => el("option", { value: y }, y)));
   yearSel.value = state.year;
   yearSel.addEventListener("change", () => { state.year = yearSel.value; draw(); });
@@ -478,7 +505,7 @@ function renderHorario() {
   semSel.value = state.sem;
   semSel.addEventListener("change", () => { state.sem = semSel.value; draw(); });
 
-  const deptPills = el("div", { class: "pill-row", style: state.scope === "malla" ? "" : "display:none" });
+  const deptPills = el("div", { class: "pill-row dept-pills", style: state.scope === "malla" ? "" : "display:none" });
   DEPTS.forEach((dep) => {
     const p = el("span", { class: `pill ${state.deptFilter.has(dep) ? "active" : ""}` }, DEPT_LABELS[dep]);
     p.addEventListener("click", () => {
@@ -494,7 +521,35 @@ function renderHorario() {
     deptPills.appendChild(p);
   });
 
+  const semPills = el("div", { class: "pill-row sem-pills", style: state.scope === "malla" ? "" : "display:none" });
+  getAllSemestres().forEach((sv) => {
+    const p = el("span", { class: `pill ${state.semFilter.has(sv) ? "active" : ""}` }, semLabel(sv));
+    p.addEventListener("click", () => {
+      if (state.semFilter.has(sv)) {
+        if (state.semFilter.size === 1) return; // no dejar el filtro vacío
+        state.semFilter.delete(sv);
+      } else {
+        state.semFilter.add(sv);
+      }
+      p.classList.toggle("active");
+      draw();
+    });
+    semPills.appendChild(p);
+  });
+  const semPillsBtns = el("span", { style: "margin-left:4px" }, [
+    (() => { const b = el("button", { class: "btn secondary", style: "padding:2px 8px;font-size:0.75rem" }, "Todos");
+      b.addEventListener("click", () => { state.semFilter = new Set(getAllSemestres()); renderHorario(); });
+      return b; })(),
+    (() => { const b = el("button", { class: "btn secondary", style: "padding:2px 8px;font-size:0.75rem;margin-left:4px" }, "Desde 5° sem.");
+      b.addEventListener("click", () => {
+        state.semFilter = new Set(getAllSemestres().filter((v) => typeof v !== "number" || v >= 5));
+        renderHorario();
+      });
+      return b; })(),
+  ]);
+
   const deptLabel = el("label", { style: state.scope === "malla" ? "" : "display:none" }, "Departamentos:");
+  const semLabelEl = el("label", { style: state.scope === "malla" ? "" : "display:none" }, "Semestre de malla:");
   const scopePills = el("div", { class: "pill-row" });
   [["transporte", "Solo Transporte"], ["malla", "Transporte + otros cursos de la Facultad"]].forEach(([val, lbl]) => {
     const p = el("span", { class: `pill ${state.scope === val ? "active" : ""}` }, lbl);
@@ -505,6 +560,8 @@ function renderHorario() {
       const show = state.scope === "malla";
       deptPills.style.display = show ? "" : "none";
       deptLabel.style.display = show ? "" : "none";
+      semPills.style.display = show ? "" : "none";
+      semLabelEl.style.display = show ? "" : "none";
       draw();
     });
     scopePills.appendChild(p);
@@ -517,6 +574,9 @@ function renderHorario() {
   controls.appendChild(scopePills);
   controls.appendChild(deptLabel);
   controls.appendChild(deptPills);
+  controls.appendChild(semLabelEl);
+  controls.appendChild(semPills);
+  controls.appendChild(semPillsBtns);
 
   const contador = el("span", { class: "instr-contador" }, "");
   function actualizarContadorHorario() {
