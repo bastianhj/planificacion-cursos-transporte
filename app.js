@@ -4,11 +4,15 @@
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const STORAGE_KEY = "tpte_cursos_data_v1";
 
+const DEPTS = ["CI", "IN", "MA"];
+const DEPT_LABELS = { CI: "CI — Civil", IN: "IN — Industrial", MA: "MA — Matemáticas" };
+
 let state = {
   data: null,
   year: "2026",
   sem: "Otoño",
   scope: "transporte", // transporte | malla
+  deptFilter: new Set(DEPTS), // departamentos visibles cuando scope === "malla"
 };
 
 function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -435,7 +439,8 @@ function buildGrid(year, sem) {
   if (state.scope === "malla") {
     const mallaScope = "malla-" + semPar;
     state.data.malla_completa
-      .filter((r) => r.sem_par === semPar && !transCodes.has(r.codigo) && r.dia && r.periodo)
+      .filter((r) => r.sem_par === semPar && !transCodes.has(r.codigo) && r.dia && r.periodo &&
+        state.deptFilter.has(r.programa))
       .forEach((r, idx) => {
         // "dia" viene numérico (1-6) al cargar desde data.js, pero como nombre de día
         // ("Lunes"...) si se reconstruyó desde un .xlsx subido a mano: aceptamos ambos.
@@ -473,6 +478,23 @@ function renderHorario() {
   semSel.value = state.sem;
   semSel.addEventListener("change", () => { state.sem = semSel.value; draw(); });
 
+  const deptPills = el("div", { class: "pill-row", style: state.scope === "malla" ? "" : "display:none" });
+  DEPTS.forEach((dep) => {
+    const p = el("span", { class: `pill ${state.deptFilter.has(dep) ? "active" : ""}` }, DEPT_LABELS[dep]);
+    p.addEventListener("click", () => {
+      if (state.deptFilter.has(dep)) {
+        if (state.deptFilter.size === 1) return; // no dejar el filtro vacío
+        state.deptFilter.delete(dep);
+      } else {
+        state.deptFilter.add(dep);
+      }
+      p.classList.toggle("active");
+      draw();
+    });
+    deptPills.appendChild(p);
+  });
+
+  const deptLabel = el("label", { style: state.scope === "malla" ? "" : "display:none" }, "Departamentos:");
   const scopePills = el("div", { class: "pill-row" });
   [["transporte", "Solo Transporte"], ["malla", "Transporte + otros cursos de la Facultad"]].forEach(([val, lbl]) => {
     const p = el("span", { class: `pill ${state.scope === val ? "active" : ""}` }, lbl);
@@ -480,6 +502,9 @@ function renderHorario() {
       state.scope = val;
       [...scopePills.children].forEach((x) => x.classList.remove("active"));
       p.classList.add("active");
+      const show = state.scope === "malla";
+      deptPills.style.display = show ? "" : "none";
+      deptLabel.style.display = show ? "" : "none";
       draw();
     });
     scopePills.appendChild(p);
@@ -490,6 +515,8 @@ function renderHorario() {
   controls.appendChild(el("label", {}, "Semestre:"));
   controls.appendChild(semSel);
   controls.appendChild(scopePills);
+  controls.appendChild(deptLabel);
+  controls.appendChild(deptPills);
 
   const contador = el("span", { class: "instr-contador" }, "");
   function actualizarContadorHorario() {
@@ -831,7 +858,7 @@ function renderCargarDatos() {
 
 function handleFile(file, status) {
   if (typeof XLSX === "undefined") {
-    status.textContent = "❌ No se pudo cargar el lector de Excel (xlsx.full.min.js). Verifica que esa carpeta se haya publicado junto al sitio.";
+    status.textContent = "❌ No se pudo cargar el lector de Excel (vendor/xlsx.full.min.js). Verifica que esa carpeta se haya publicado junto al sitio.";
     return;
   }
   status.textContent = "Procesando " + file.name + "…";
