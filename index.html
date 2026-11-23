@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Planificación de Cursos — Transporte UChile</title>
+<link rel="stylesheet" href="styles.css" />
+<script src="xlsx.full.min.js"></script>
+</head>
+<body>
+<header class="app-header">
+  <div>
+    <h1>Planificación de Cursos — Transporte</h1>
+    <p>Departamento de Ingeniería Civil · Universidad de Chile</p>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="active" data-target="view-inicio">Inicio</button>
+  <button data-target="view-consistencia">Consistencia</button>
+  <button data-target="view-horario">Horario y choques</button>
+  <button data-target="view-oferta">Oferta de cursos</button>
+  <button data-target="view-carga">Carga docente</button>
+  <button data-target="view-malla">Malla completa</button>
+  <button data-target="view-cargar">Cargar datos</button>
+</nav>
+
+<main>
+  <section id="view-inicio" class="view active"></section>
+  <section id="view-consistencia" class="view"></section>
+  <section id="view-horario" class="view"></section>
+  <section id="view-oferta" class="view"></section>
+  <section id="view-carga" class="view"></section>
+  <section id="view-malla" class="view"></section>
+  <section id="view-cargar" class="view"></section>
+</main>
+
+<p class="foot">Aplicación estática — todo el procesamiento ocurre en tu navegador. Código fuente y planilla maestra en este mismo repositorio.</p>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
