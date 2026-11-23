@@ -7,6 +7,13 @@ const STORAGE_KEY = "tpte_cursos_data_v1";
 const DEPTS = ["CI", "IN", "MA"];
 const DEPT_LABELS = { CI: "CI — Civil", IN: "IN — Industrial", MA: "MA — Matemáticas" };
 
+// Deriva el departamento (prefijo de letras del código) cuando no viene dado explícitamente.
+function inferDept(codigo) {
+  if (!codigo) return null;
+  const m = String(codigo).trim().toUpperCase().match(/^([A-Z]+)/);
+  return m ? m[1] : null;
+}
+
 let state = {
   data: null,
   year: "2026",
@@ -540,10 +547,14 @@ function buildGrid(year, sem) {
         return;
       }
       seen.set(dupKey, entries.length);
+      const mallaInfo = r.codigo ? mallaMap[r.codigo] : null;
       entries.push({
         dia, periodo, ext: mod ? false : s.ext,
         codigo: r.codigo || r.nombre, nombre: r.nombre, fuente: "Transporte " + year, tipo: tipoLabel,
         profesor: r.profesor, moveKey: mk, movido: !!mod,
+        programa: (mallaInfo && mallaInfo.programa) || inferDept(r.codigo) || "CI",
+        semestre: mallaInfo ? mallaInfo.semestre_cohorte : null,
+        oe: r.oe === "O" ? "Obligatorio" : r.oe === "E" ? "Electivo" : null,
       });
     };
     (r.catedra || []).forEach((s, idx) => addSesion(s, idx, "Cátedra", "catedra"));
@@ -567,6 +578,9 @@ function buildGrid(year, sem) {
           dia: mod ? mod.dia : diaNum, periodo: mod ? mod.periodo : r.periodo, ext: false,
           codigo: r.codigo || r.nombre, nombre: r.nombre, fuente: `Malla (${r.programa})`,
           tipo: tipoCompleto, profesor: "", moveKey: mk, movido: !!mod,
+          programa: r.programa || inferDept(r.codigo),
+          semestre: typeof r.semestre_cohorte === "number" ? r.semestre_cohorte : null,
+          oe: r.semestre_cohorte === "E" ? "Electivo" : typeof r.semestre_cohorte === "number" ? "Obligatorio" : null,
         });
       });
   }
@@ -581,6 +595,7 @@ function buildGrid(year, sem) {
         dia: a.dia, periodo: a.periodo, ext: false,
         codigo: a.codigo || null, nombre: a.nombre, fuente: "Agregado manualmente",
         tipo: a.tipo, profesor: a.profesor || "", agregadoId: a.id,
+        programa: inferDept(a.codigo), semestre: null, oe: null,
       });
     });
 
@@ -590,6 +605,250 @@ function buildGrid(year, sem) {
 function dayNameToNum(name) {
   const idx = DIAS.indexOf(name);
   return idx >= 0 ? idx + 1 : null;
+}
+
+// ---------- Buscador de horario ----------
+// Junta TODAS las entradas (Transporte + malla completa de la Facultad + cursos agregados a
+// mano), sin aplicar los filtros de scope/departamento/semestre de malla que tiene la vista
+// de Horario — el buscador aplica sus propios filtros (carrerasFiltro) de forma independiente.
+function recolectarEntradasCompletas(year, semStr) {
+  const savedScope = state.scope, savedDept = state.deptFilter, savedSem = state.semFilter;
+  state.scope = "malla";
+  state.deptFilter = new Set(DEPTS);
+  state.semFilter = new Set(getAllSemestres());
+  let entries;
+  try {
+    entries = buildGrid(year, semStr);
+  } finally {
+    state.scope = savedScope;
+    state.deptFilter = savedDept;
+    state.semFilter = savedSem;
+  }
+  return entries;
+}
+
+// Regla de choque (definida con el usuario):
+// - Un curso ELECTIVO nuevo no puede chocar con OTROS ELECTIVOS del mismo semestre objetivo
+//   (choque duro) y debe MINIMIZAR choques con OBLIGATORIOS del mismo semestre (choque blando).
+// - Un curso OBLIGATORIO nuevo no puede chocar con NINGÚN curso del mismo semestre objetivo,
+//   sea O o E (choque duro), y debe MINIMIZAR choques con cursos de semestres contiguos (±1)
+//   (choque blando).
+// Las entradas sin clasificar (sin semestre de malla ni O/E conocido — p. ej. un curso agregado
+// a mano sin código) siempre se cuentan como choque duro, para no ocultarle nada al usuario.
+function buscarHorarios({ year, semStr, tipoNuevo, semestresObjetivo, carrerasFiltro }) {
+  const entries = recolectarEntradasCompletas(year, semStr);
+  const objetivoSet = new Set(semestresObjetivo);
+  const adyacentes = new Set();
+  semestresObjetivo.forEach((s) => {
+    if (typeof s === "number") {
+      if (s - 1 >= 1) adyacentes.add(s - 1);
+      if (s + 1 <= 11) adyacentes.add(s + 1);
+    }
+  });
+  objetivoSet.forEach((s) => adyacentes.delete(s));
+
+  const nPeriodos = (state.data.periodos || []).length || 7;
+  const slots = [];
+  const slotMap = {};
+  for (let dia = 1; dia <= DIAS.length; dia++) {
+    for (let periodo = 1; periodo <= nPeriodos; periodo++) {
+      const s = { dia, periodo, hard: [], soft: [] };
+      slots.push(s);
+      slotMap[`${dia}|${periodo}`] = s;
+    }
+  }
+
+  entries.forEach((e) => {
+    if (!e.dia || !e.periodo) return;
+    const slot = slotMap[`${e.dia}|${e.periodo}`];
+    if (!slot) return;
+    // Si el departamento es conocido y el usuario no quiere chequear contra él, se ignora.
+    // Las entradas sin departamento identificable siempre se consideran (más conservador).
+    if (e.programa && DEPTS.includes(e.programa) && !carrerasFiltro.has(e.programa)) return;
+
+    const sinClasificar = (e.semestre === null || e.semestre === undefined) && !e.oe;
+    if (sinClasificar) {
+      slot.hard.push({ e, motivo: "Sin clasificar (agregado a mano o sin posición de malla)" });
+      return;
+    }
+    if (tipoNuevo === "Electivo") {
+      if (e.oe === "Electivo" && e.semestre !== null && objetivoSet.has(e.semestre)) {
+        slot.hard.push({ e, motivo: "Otro electivo del mismo semestre" });
+      } else if (e.oe === "Obligatorio" && e.semestre !== null && objetivoSet.has(e.semestre)) {
+        slot.soft.push({ e, motivo: "Obligatorio del mismo semestre" });
+      }
+    } else {
+      if (e.semestre !== null && objetivoSet.has(e.semestre)) {
+        slot.hard.push({ e, motivo: "Curso del mismo semestre" });
+      } else if (e.semestre !== null && adyacentes.has(e.semestre)) {
+        slot.soft.push({ e, motivo: "Curso de semestre contiguo (±1)" });
+      }
+    }
+  });
+
+  return slots.map((s) => ({ ...s, disponible: s.hard.length === 0 }));
+}
+
+function renderBuscador() {
+  const c = document.querySelector("#view-buscador");
+  c.innerHTML = "";
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", {}, "Buscador de horario"));
+  card.appendChild(el("p", { class: "subtitle" },
+    "Busca en qué día y período ubicar un curso nuevo, evitando choques con los cursos ya " +
+    "agendados. Un curso Obligatorio no puede chocar con ningún curso del mismo semestre (y " +
+    "conviene minimizar los choques con semestres contiguos ±1). Un curso Electivo no puede " +
+    "chocar con otros electivos del mismo semestre (y conviene minimizar los choques con los " +
+    "obligatorios de ese semestre)."));
+
+  const controls = el("div", { class: "controls" });
+  const yearSel = el("select", {}, ["2025", "2026", "2027"].map((y) => el("option", { value: y }, y)));
+  yearSel.value = state.year;
+  const semSel = el("select", {}, ["Otoño", "Primavera"].map((s) => el("option", { value: s }, s)));
+  semSel.value = state.sem;
+  controls.appendChild(el("label", {}, "Año:"));
+  controls.appendChild(yearSel);
+  controls.appendChild(el("label", {}, "Semestre:"));
+  controls.appendChild(semSel);
+  card.appendChild(controls);
+
+  const tipoRow = el("div", { class: "controls" });
+  tipoRow.appendChild(el("label", {}, "Tipo del curso nuevo:"));
+  let tipoNuevo = "Obligatorio";
+  const tipoPills = el("div", { class: "pill-row" });
+  ["Obligatorio", "Electivo"].forEach((t) => {
+    const p = el("span", { class: `pill ${t === tipoNuevo ? "active" : ""}` }, t);
+    p.addEventListener("click", () => {
+      tipoNuevo = t;
+      [...tipoPills.children].forEach((x) => x.classList.remove("active"));
+      p.classList.add("active");
+    });
+    tipoPills.appendChild(p);
+  });
+  tipoRow.appendChild(tipoPills);
+  card.appendChild(tipoRow);
+
+  const semObjetivo = new Set();
+  const semRow = el("div", { class: "controls" });
+  semRow.appendChild(el("label", {}, "Semestre(s) de los estudiantes:"));
+  const semObjPills = el("div", { class: "pill-row" });
+  getAllSemestres().filter((v) => typeof v === "number").forEach((sv) => {
+    const p = el("span", { class: "pill" }, semLabel(sv));
+    p.addEventListener("click", () => {
+      if (semObjetivo.has(sv)) { semObjetivo.delete(sv); p.classList.remove("active"); }
+      else { semObjetivo.add(sv); p.classList.add("active"); }
+    });
+    semObjPills.appendChild(p);
+  });
+  semRow.appendChild(semObjPills);
+  card.appendChild(semRow);
+
+  const carrerasFiltro = new Set(DEPTS);
+  const carrerasRow = el("div", { class: "controls" });
+  carrerasRow.appendChild(el("label", {}, "Evitar choques con:"));
+  const carrerasPills = el("div", { class: "pill-row" });
+  DEPTS.forEach((dep) => {
+    const p = el("span", { class: "pill active" }, DEPT_LABELS[dep]);
+    p.addEventListener("click", () => {
+      if (carrerasFiltro.has(dep)) {
+        if (carrerasFiltro.size === 1) return;
+        carrerasFiltro.delete(dep);
+        p.classList.remove("active");
+      } else {
+        carrerasFiltro.add(dep);
+        p.classList.add("active");
+      }
+    });
+    carrerasPills.appendChild(p);
+  });
+  carrerasRow.appendChild(carrerasPills);
+  card.appendChild(carrerasRow);
+
+  const errorMsg = el("p", { style: "color:var(--rojo);min-height:1.2em" }, "");
+  const btnBuscar = el("button", { class: "btn", style: "margin-top:6px" }, "Buscar horarios disponibles");
+  card.appendChild(btnBuscar);
+  card.appendChild(errorMsg);
+
+  const resultsContainer = el("div", { style: "margin-top:18px" });
+  card.appendChild(resultsContainer);
+
+  btnBuscar.addEventListener("click", () => {
+    if (semObjetivo.size === 0) {
+      errorMsg.textContent = "Selecciona al menos un semestre de estudiantes.";
+      return;
+    }
+    errorMsg.textContent = "";
+    const resultados = buscarHorarios({
+      year: yearSel.value, semStr: semSel.value, tipoNuevo,
+      semestresObjetivo: [...semObjetivo], carrerasFiltro,
+    });
+    pintarResultadosBuscador(resultsContainer, resultados);
+  });
+
+  c.appendChild(card);
+}
+
+function pintarResultadosBuscador(container, resultados) {
+  container.innerHTML = "";
+  const disponibles = resultados.filter((r) => r.disponible)
+    .sort((a, b) => a.soft.length - b.soft.length || a.dia - b.dia || a.periodo - b.periodo);
+  const noDisponibles = resultados.filter((r) => !r.disponible)
+    .sort((a, b) => a.dia - b.dia || a.periodo - b.periodo);
+
+  const periodoLabel = (p) => {
+    const info = getPeriodoInfo(p);
+    const normal = info["Horario normal"] || "";
+    return `P${p}${normal ? " (" + normal + ")" : ""}`;
+  };
+
+  const chipsDetalle = (lista) => el("div", { style: "margin-top:4px" },
+    lista.map((x) => el("span", {
+      class: "badge", style: "margin:2px 4px 0 0;display:inline-block",
+      title: x.motivo,
+    }, `${x.e.codigo || x.e.nombre} — ${x.motivo}`)));
+
+  container.appendChild(el("h3", {}, `Horarios disponibles (${disponibles.length})`));
+  if (!disponibles.length) {
+    container.appendChild(el("p", { class: "subtitle" }, "No hay horarios sin choques duros con los filtros elegidos."));
+  } else {
+    const tableContainer = el("div", {});
+    makeSortableTable(
+      tableContainer,
+      [
+        { label: "Día", value: (r) => r.dia },
+        { label: "Período", value: (r) => r.periodo },
+        { label: "Choques blandos", value: (r) => r.soft.length },
+      ],
+      disponibles,
+      (r) => {
+        const tr = el("tr", {}, [
+          el("td", {}, DIAS[r.dia - 1]),
+          el("td", {}, periodoLabel(r.periodo)),
+          el("td", {}, r.soft.length ? badge(String(r.soft.length), "amarillo") : badge("0 ✓", "verde")),
+        ]);
+        if (!r.soft.length) return tr;
+        tr.style.cursor = "pointer";
+        tr.title = "Haz clic para ver el detalle de los choques blandos";
+        const trDetalle = el("tr", { class: "hidden" }, el("td", { colspan: "3" }, chipsDetalle(r.soft)));
+        tr.addEventListener("click", () => trDetalle.classList.toggle("hidden"));
+        const frag = document.createDocumentFragment();
+        frag.appendChild(tr);
+        frag.appendChild(trDetalle);
+        return frag;
+      }
+    );
+    container.appendChild(tableContainer);
+  }
+
+  const detalleNoDisp = el("details", { style: "margin-top:16px" });
+  detalleNoDisp.appendChild(el("summary", {}, `Horarios no disponibles — con choques duros (${noDisponibles.length})`));
+  noDisponibles.forEach((r) => {
+    const box = el("div", { style: "padding:6px 0;border-bottom:1px solid var(--gris-200)" });
+    box.appendChild(el("strong", {}, `${DIAS[r.dia - 1]}, ${periodoLabel(r.periodo)}`));
+    box.appendChild(chipsDetalle(r.hard));
+    detalleNoDisp.appendChild(box);
+  });
+  container.appendChild(detalleNoDisp);
 }
 
 // ---------- popover "Agregar curso" de la grilla de Horario ----------
@@ -1052,11 +1311,45 @@ function renderCarga() {
   c.appendChild(card2);
 }
 
-// ---------- vista: Malla completa ----------
-function renderMalla() {
-  const c = document.querySelector("#view-malla");
+// ---------- vista: Catastro (antes "Malla completa") ----------
+function renderCatastro() {
+  const c = document.querySelector("#view-catastro");
   c.innerHTML = "";
   const card = el("div", { class: "card" });
+
+  // Panel: actualizar horarios de cursos de otras carreras scrapeando UCampus.
+  // La app es 100% estática (sin servidor), así que este botón no puede hacer el scraping
+  // por sí solo: abre el catálogo de UCampus y una pestaña de Claude, y copia al portapapeles
+  // un prompt ya redactado para que Claude revise los horarios vigentes y te diga qué cambió.
+  const ucampusCard = el("div", { class: "card", style: "background:var(--azul-claro);margin-bottom:16px" });
+  ucampusCard.appendChild(el("h3", { style: "margin-top:0" }, "Actualizar horarios de otras carreras (UCampus)"));
+  ucampusCard.appendChild(el("p", { class: "subtitle" },
+    "Abre el catálogo de UCampus de la Facultad y una conversación de Claude, y copia un mensaje " +
+    "ya redactado para pedirle a Claude que revise los horarios vigentes de los cursos de otras " +
+    "carreras (IN, MA, CI fuera de Transporte) y actualice el catastro con lo que haya cambiado."));
+  const ucampusStatus = el("span", { style: "font-size:0.82rem;color:var(--gris-700);margin-left:10px" }, "");
+  const btnUcampus = el("button", { class: "btn" }, "Abrir UCampus + Claude");
+  btnUcampus.addEventListener("click", () => {
+    const prompt =
+      "Por favor revisa en UCampus (https://ucampus.uchile.cl/m/fcfm_catalogo/) los horarios vigentes de los " +
+      "cursos de otras carreras (Industrial IN, Matemáticas MA, y cursos de Civil CI que no son de la malla de " +
+      "Transporte) que usamos en el Catastro de la app de Planificación de Cursos — Transporte UChile " +
+      "(repositorio bastianhj/planificacion-cursos-transporte, hoja 'Malla_completa' de Cursos_v2.xlsx / " +
+      "Maestro_Cursos_Transporte.xlsx). Dime qué cursos cambiaron de horario, cuáles son nuevos y cuáles ya no " +
+      "se dictan, y actualiza esa planilla y el sitio publicado con lo que corresponda.";
+    try {
+      navigator.clipboard.writeText(prompt);
+      ucampusStatus.textContent = "✅ Prompt copiado al portapapeles — pégalo en la pestaña de Claude que se abrió.";
+    } catch (e) {
+      ucampusStatus.textContent = "No se pudo copiar automáticamente; copia el mensaje desde esta tarjeta.";
+    }
+    window.open("https://ucampus.uchile.cl/m/fcfm_catalogo/", "_blank");
+    window.open("https://claude.ai/new", "_blank");
+  });
+  ucampusCard.appendChild(btnUcampus);
+  ucampusCard.appendChild(ucampusStatus);
+  c.appendChild(ucampusCard);
+
   const controls = el("div", { class: "controls" });
   const progSel = el("select", {}, ["Todos", "CI", "IN", "MA", "MGO"].map((p) => el("option", { value: p }, p)));
   const search = el("input", { type: "search", placeholder: "Buscar código o nombre…" });
@@ -1094,12 +1387,31 @@ function renderMalla() {
   controls.appendChild(el("label", {}, "Programa:"));
   controls.appendChild(progSel);
   controls.appendChild(search);
-  card.appendChild(el("h2", {}, "Malla completa de la Facultad"));
+  card.appendChild(el("h2", {}, "Catastro de cursos de la Facultad"));
   card.appendChild(el("p", { class: "subtitle" }, "Todos los cursos (Industrias, Matemáticas, Magíster en Gestión y Políticas Públicas, Civil) usados para el chequeo de choques."));
   card.appendChild(controls);
   card.appendChild(tableContainer);
   c.appendChild(card);
   apply();
+}
+
+// ---------- vista: Malla completa (imagen) ----------
+function renderMallaImagen() {
+  const c = document.querySelector("#view-malla-imagen");
+  if (c.dataset.rendered) return; // contenido estático: no hace falta reconstruirlo en cada render
+  c.innerHTML = "";
+  const card = el("div", { class: "card" });
+  card.appendChild(el("h2", {}, "Malla completa — Ingeniería Civil, mención Transporte"));
+  card.appendChild(el("p", { class: "subtitle" },
+    "Malla oficial de la carrera (versión Diciembre 2025, V6). Para la lista de cursos de otras " +
+    "carreras usados en el chequeo de choques, ve a la pestaña «Catastro»."));
+  card.appendChild(el("img", {
+    src: "malla_ingenieria_civil_transporte.jpg",
+    alt: "Malla Ingeniería Civil Transporte",
+    style: "max-width:100%;height:auto;border:1px solid var(--gris-200);border-radius:var(--radio);margin-top:10px",
+  }));
+  c.appendChild(card);
+  c.dataset.rendered = "1";
 }
 
 // ---------- vista: Cargar datos ----------
@@ -1255,9 +1567,11 @@ function renderAll(skipCargar) {
   renderInicio();
   renderConsistencia();
   renderHorario();
+  renderBuscador();
   renderOferta();
   renderCarga();
-  renderMalla();
+  renderMallaImagen();
+  renderCatastro();
   if (!skipCargar) renderCargarDatos();
 }
 

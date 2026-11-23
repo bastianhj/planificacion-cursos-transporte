@@ -240,6 +240,10 @@ table.data tbody tr:hover { background: #F0F5FA; }
 .badge.baja { background: var(--azul-claro); color: var(--azul-oscuro); }
 .badge.O { background: var(--azul-claro); color: var(--azul-oscuro); }
 .badge.E { background: var(--verde-claro); color: var(--verde); }
+.badge.verde { background: var(--verde-claro); color: var(--verde); }
+.badge.amarillo { background: var(--ambar-claro); color: var(--ambar); }
+
+tr.hidden { display: none; }
 
 /* grilla horario */
 table.grid { border-collapse: collapse; width: 100%; table-layout: fixed; }
