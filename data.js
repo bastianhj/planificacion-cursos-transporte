@@ -1976,10 +1976,15 @@ const DATA = {
      "dia": 2,
      "periodo": 5,
      "ext": false
+    },
+    {
+     "dia": 5,
+     "periodo": 1,
+     "ext": false
     }
    ],
    "catedra_txt": "Lunes P2; Viernes P2",
-   "auxiliar_txt": "Martes P5",
+   "auxiliar_txt": "Martes P5; Viernes P1",
    "profesor": "Cristián Cortés",
    "creditos": 6,
    "oe": "O",
@@ -7691,6 +7696,18 @@ const DATA = {
    "dia": 4,
    "periodo": 4,
    "nota": ""
+  },
+  {
+   "codigo": "CI5146",
+   "programa": "CI",
+   "articulacion": 1,
+   "nombre": "Redes de Transporte",
+   "tipo": "A",
+   "semestre_cohorte": 9,
+   "sem_par": "O",
+   "dia": 5,
+   "periodo": 1,
+   "nota": ""
   }
  ],
  "chequeo": [
@@ -7705,11 +7722,31 @@ const DATA = {
    "Instrucción de corrección": ""
   },
   {
+   "ID": "H-f11aac8d0e",
+   "Severidad": "Alta",
+   "Tipo": "Horario no coincide",
+   "Curso": "CI5146 Redes de Transporte",
+   "Descripción": "[2025, Otoño] Cátedra: Cursos_transporte=Lunes P2; Viernes P2 vs Cursos_v2=Lunes P2; Viernes P2. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5; Viernes P1.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
+   "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
+   "Instrucción de corrección": ""
+  },
+  {
    "ID": "H-d0bf5ee9ee",
    "Severidad": "Alta",
    "Tipo": "Horario no coincide",
    "Curso": "CI3141 Análisis de Sistemas de Transporte",
    "Descripción": "[2026, Otoño] Cátedra: Cursos_transporte=Lunes P3; Viernes P3 vs Cursos_v2=Lunes P3; Martes P3; Jueves P3; Viernes P3. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
+   "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-cab9196e7a",
+   "Severidad": "Alta",
+   "Tipo": "Horario no coincide",
+   "Curso": "CI5146 Redes de Transporte",
+   "Descripción": "[2026, Otoño] Cátedra: Cursos_transporte=Lunes P2; Viernes P2 vs Cursos_v2=Lunes P2; Viernes P2. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5; Viernes P1.",
    "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
    "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
    "Instrucción de corrección": ""
