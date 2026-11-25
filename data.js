@@ -1761,8 +1761,8 @@ const DATA = {
    "oe": "O",
    "semestre": "Otoño",
    "sem_par": "O",
-   "pondera": 0.666666666666667,
-   "observaciones": ""
+   "pondera": null,
+   "observaciones": "Pondera del curso suma 0, se esperaba 1.0 para 6 créditos."
   },
   {
    "codigo": "CI4242",
@@ -1793,8 +1793,8 @@ const DATA = {
    "oe": "O",
    "semestre": "Otoño",
    "sem_par": "O",
-   "pondera": 0.333333333333333,
-   "observaciones": ""
+   "pondera": null,
+   "observaciones": "Pondera del curso suma 0, se esperaba 1.0 para 6 créditos."
   },
   {
    "codigo": "CI4246",
@@ -2305,13 +2305,13 @@ const DATA = {
    "nombre": "Proyecto de Gestión de Metro y Ferrocarriles",
    "catedra": [
     {
-     "dia": 3,
+     "dia": 4,
      "periodo": 6,
      "ext": false
     }
    ],
    "auxiliar": [],
-   "catedra_txt": "Miércoles P6",
+   "catedra_txt": "Jueves P6",
    "auxiliar_txt": "",
    "profesor": "Alvaro Caballero",
    "creditos": 3,
@@ -2326,18 +2326,18 @@ const DATA = {
    "nombre": "Proyecto de Datos y Análisis Urbano",
    "catedra": [
     {
-     "dia": 2,
-     "periodo": 4,
+     "dia": 3,
+     "periodo": 6,
      "ext": false
     },
     {
      "dia": 5,
-     "periodo": 5,
+     "periodo": 4,
      "ext": false
     }
    ],
    "auxiliar": [],
-   "catedra_txt": "Martes P4; Viernes P5",
+   "catedra_txt": "Miércoles P6; Viernes P4",
    "auxiliar_txt": "",
    "profesor": "Diego Candia",
    "creditos": 6,
@@ -2352,20 +2352,72 @@ const DATA = {
    "nombre": "Proyecto de Datos y Análisis Urbano",
    "catedra": [
     {
+     "dia": 3,
+     "periodo": 6,
+     "ext": false
+    },
+    {
+     "dia": 5,
+     "periodo": 4,
+     "ext": false
+    }
+   ],
+   "auxiliar": [],
+   "catedra_txt": "Miércoles P6; Viernes P4",
+   "auxiliar_txt": "",
+   "profesor": "Bastián Henríquez",
+   "creditos": 6,
+   "oe": "E",
+   "semestre": "Otoño",
+   "sem_par": "O",
+   "pondera": 0.5,
+   "observaciones": ""
+  },
+  {
+   "codigo": "CI6XX",
+   "nombre": "Transporte y Sociedad",
+   "catedra": [
+    {
      "dia": 2,
      "periodo": 4,
      "ext": false
     },
     {
-     "dia": 5,
-     "periodo": 5,
+     "dia": 4,
+     "periodo": 4,
      "ext": false
     }
    ],
    "auxiliar": [],
-   "catedra_txt": "Martes P4; Viernes P5",
+   "catedra_txt": "Martes P4; Jueves P4",
    "auxiliar_txt": "",
-   "profesor": "Bastián Henríquez",
+   "profesor": "Marcela Munizaga M.",
+   "creditos": 6,
+   "oe": "E",
+   "semestre": "Otoño",
+   "sem_par": "O",
+   "pondera": 0.5,
+   "observaciones": ""
+  },
+  {
+   "codigo": "CI6XX",
+   "nombre": "Transporte y Sociedad",
+   "catedra": [
+    {
+     "dia": 2,
+     "periodo": 4,
+     "ext": false
+    },
+    {
+     "dia": 4,
+     "periodo": 4,
+     "ext": false
+    }
+   ],
+   "auxiliar": [],
+   "catedra_txt": "Martes P4; Jueves P4",
+   "auxiliar_txt": "",
+   "profesor": "Diego Candia",
    "creditos": 6,
    "oe": "E",
    "semestre": "Otoño",
@@ -3736,7 +3788,7 @@ const DATA = {
    "tipo": "C",
    "semestre_cohorte": "E",
    "sem_par": "O",
-   "dia": 3,
+   "dia": 4,
    "periodo": 6,
    "nota": ""
   },
@@ -3760,8 +3812,8 @@ const DATA = {
    "tipo": "C",
    "semestre_cohorte": "E",
    "sem_par": "O",
-   "dia": 2,
-   "periodo": 4,
+   "dia": 3,
+   "periodo": 6,
    "nota": ""
   },
   {
@@ -3773,7 +3825,7 @@ const DATA = {
    "semestre_cohorte": "E",
    "sem_par": "O",
    "dia": 5,
-   "periodo": 5,
+   "periodo": 4,
    "nota": ""
   },
   {
@@ -7615,6 +7667,30 @@ const DATA = {
    "dia": 4,
    "periodo": 3,
    "nota": ""
+  },
+  {
+   "codigo": "CI6XX",
+   "programa": "CI",
+   "articulacion": 0,
+   "nombre": "Transporte y Sociedad",
+   "tipo": "C",
+   "semestre_cohorte": "E",
+   "sem_par": "O",
+   "dia": 2,
+   "periodo": 4,
+   "nota": ""
+  },
+  {
+   "codigo": "CI6XX",
+   "programa": "CI",
+   "articulacion": 0,
+   "nombre": "Transporte y Sociedad",
+   "tipo": "C",
+   "semestre_cohorte": "E",
+   "sem_par": "O",
+   "dia": 4,
+   "periodo": 4,
+   "nota": ""
   }
  ],
  "chequeo": [
@@ -7634,6 +7710,16 @@ const DATA = {
    "Tipo": "Horario no coincide",
    "Curso": "CI3141 Análisis de Sistemas de Transporte",
    "Descripción": "[2026, Otoño] Cátedra: Cursos_transporte=Lunes P3; Viernes P3 vs Cursos_v2=Lunes P3; Martes P3; Jueves P3; Viernes P3. Auxiliar: Cursos_transporte=Martes P5 vs Cursos_v2=Martes P5.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
+   "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-cd2c782c85",
+   "Severidad": "Alta",
+   "Tipo": "Horario no coincide",
+   "Curso": "CI6318 Proyecto de Gestión de Metro y Ferrocarriles",
+   "Descripción": "[2026, Otoño] Cátedra: Cursos_transporte=Miércoles P6 vs Cursos_v2=Jueves P6. Auxiliar: Cursos_transporte= vs Cursos_v2=.",
    "Fuente(s)": "Cursos_transporte_2025-2026.xlsx vs Cursos_v2.xlsx",
    "Recomendación": "Confirmar cuál horario es el vigente y actualizar la otra planilla.",
    "Instrucción de corrección": ""
@@ -7676,6 +7762,16 @@ const DATA = {
    "Descripción": "Aparece en Cursos_transporte (hoja 2027) pero no en Carga Docente / Cursos 2027.",
    "Fuente(s)": "Cursos_transporte_2025-2026.xlsx",
    "Recomendación": "Agregar la fila correspondiente en Carga Docente para no perder el cálculo de carga.",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-0a01dc4346",
+   "Severidad": "Media",
+   "Tipo": "Pondera no calza con créditos",
+   "Curso": "CI4242 Diseño de Sistemas de Transporte",
+   "Descripción": "La suma de 'Pondera' en Carga Docente para este curso es 0, pero para 6 créditos debería ser 1.0 (pondera = créditos/6).",
+   "Fuente(s)": "Carga Docente.xlsx (hoja Cursos 2027)",
+   "Recomendación": "Revisar y corregir la pondera de los profesores de este curso.",
    "Instrucción de corrección": ""
   },
   {
@@ -7789,11 +7885,41 @@ const DATA = {
    "Instrucción de corrección": ""
   },
   {
-   "ID": "H-eb3b4e52d6",
+   "ID": "H-74cc773fae",
+   "Severidad": "Baja",
+   "Tipo": "Tabla dinámica desactualizada",
+   "Curso": "Balance cursos por semestre — O/Otoño",
+   "Descripción": "La tabla dinámica 'Balance cursos por semestre' muestra 7, pero los datos crudos de 'Cursos 2027' dan 0.",
+   "Fuente(s)": "Carga Docente.xlsx (hoja 'Balance cursos por semestre')",
+   "Recomendación": "Actualizar/refrescar la tabla dinámica en Excel (botón 'Actualizar todo').",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-65b78d650f",
+   "Severidad": "Baja",
+   "Tipo": "Tabla dinámica desactualizada",
+   "Curso": "Balance cursos por semestre — O/Primavera",
+   "Descripción": "La tabla dinámica 'Balance cursos por semestre' muestra 6, pero los datos crudos de 'Cursos 2027' dan 0.",
+   "Fuente(s)": "Carga Docente.xlsx (hoja 'Balance cursos por semestre')",
+   "Recomendación": "Actualizar/refrescar la tabla dinámica en Excel (botón 'Actualizar todo').",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-4eb7994920",
+   "Severidad": "Baja",
+   "Tipo": "Tabla dinámica desactualizada",
+   "Curso": "Balance cursos por semestre — E/Otoño",
+   "Descripción": "La tabla dinámica 'Balance cursos por semestre' muestra 5, pero los datos crudos de 'Cursos 2027' dan 0.",
+   "Fuente(s)": "Carga Docente.xlsx (hoja 'Balance cursos por semestre')",
+   "Recomendación": "Actualizar/refrescar la tabla dinámica en Excel (botón 'Actualizar todo').",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-1570a23c5d",
    "Severidad": "Baja",
    "Tipo": "Tabla dinámica desactualizada",
    "Curso": "Balance cursos por semestre — E/Primavera",
-   "Descripción": "La tabla dinámica 'Balance cursos por semestre' muestra 6, pero los datos crudos de 'Cursos 2027' dan 8.",
+   "Descripción": "La tabla dinámica 'Balance cursos por semestre' muestra 6, pero los datos crudos de 'Cursos 2027' dan 0.",
    "Fuente(s)": "Carga Docente.xlsx (hoja 'Balance cursos por semestre')",
    "Recomendación": "Actualizar/refrescar la tabla dinámica en Excel (botón 'Actualizar todo').",
    "Instrucción de corrección": ""
@@ -7814,9 +7940,9 @@ const DATA = {
   },
   {
    "profesor": "Antonio Gschwender, K.",
-   "otono": 0.6667,
+   "otono": 0.0,
    "primavera": 0,
-   "total": 0.6667
+   "total": 0.0
   },
   {
    "profesor": "Bastián Henríquez",
@@ -7832,9 +7958,9 @@ const DATA = {
   },
   {
    "profesor": "Cristián Cortés",
-   "otono": 1.8333,
+   "otono": 1.5,
    "primavera": 2.0,
-   "total": 3.8333
+   "total": 3.5
   },
   {
    "profesor": "Cristóbal Pineda",
@@ -7844,9 +7970,9 @@ const DATA = {
   },
   {
    "profesor": "Diego Candia",
-   "otono": 1.0,
+   "otono": 1.5,
    "primavera": 1.5,
-   "total": 2.5
+   "total": 3.0
   },
   {
    "profesor": "Fernando Feres",
@@ -7886,9 +8012,9 @@ const DATA = {
   },
   {
    "profesor": "Marcela Munizaga M.",
-   "otono": 1.5,
+   "otono": 2.0,
    "primavera": 0,
-   "total": 1.5
+   "total": 2.0
   },
   {
    "profesor": "Mauro Huenupi",
@@ -7906,15 +8032,15 @@ const DATA = {
  "balance_oe": [
   {
    "oe": "O",
-   "otono": 7,
-   "primavera": 6,
-   "total": 13
+   "otono": 0,
+   "primavera": 0,
+   "total": 0
   },
   {
    "oe": "E",
-   "otono": 5,
-   "primavera": 8,
-   "total": 13
+   "otono": 0,
+   "primavera": 0,
+   "total": 0
   }
  ],
  "catalogo_metadata": [
