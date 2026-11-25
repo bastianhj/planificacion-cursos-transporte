@@ -2374,7 +2374,7 @@ const DATA = {
    "observaciones": ""
   },
   {
-   "codigo": "CI6XX",
+   "codigo": "CI6XXX",
    "nombre": "Transporte y Sociedad",
    "catedra": [
     {
@@ -2400,7 +2400,7 @@ const DATA = {
    "observaciones": ""
   },
   {
-   "codigo": "CI6XX",
+   "codigo": "CI6XXX",
    "nombre": "Transporte y Sociedad",
    "catedra": [
     {
@@ -7669,7 +7669,7 @@ const DATA = {
    "nota": ""
   },
   {
-   "codigo": "CI6XX",
+   "codigo": "CI6XXX",
    "programa": "CI",
    "articulacion": 0,
    "nombre": "Transporte y Sociedad",
@@ -7681,7 +7681,7 @@ const DATA = {
    "nota": ""
   },
   {
-   "codigo": "CI6XX",
+   "codigo": "CI6XXX",
    "programa": "CI",
    "articulacion": 0,
    "nombre": "Transporte y Sociedad",
@@ -7755,16 +7755,6 @@ const DATA = {
    "Instrucción de corrección": ""
   },
   {
-   "ID": "H-c41b96f9b0",
-   "Severidad": "Media",
-   "Tipo": "Curso ausente en Carga Docente",
-   "Curso": "CIXXX Transporte y Sociedad (None)",
-   "Descripción": "Aparece en Cursos_transporte (hoja 2027) pero no en Carga Docente / Cursos 2027.",
-   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx",
-   "Recomendación": "Agregar la fila correspondiente en Carga Docente para no perder el cálculo de carga.",
-   "Instrucción de corrección": ""
-  },
-  {
    "ID": "H-0a01dc4346",
    "Severidad": "Media",
    "Tipo": "Pondera no calza con créditos",
@@ -7772,6 +7762,16 @@ const DATA = {
    "Descripción": "La suma de 'Pondera' en Carga Docente para este curso es 0, pero para 6 créditos debería ser 1.0 (pondera = créditos/6).",
    "Fuente(s)": "Carga Docente.xlsx (hoja Cursos 2027)",
    "Recomendación": "Revisar y corregir la pondera de los profesores de este curso.",
+   "Instrucción de corrección": ""
+  },
+  {
+   "ID": "H-c41b96f9b0",
+   "Severidad": "Media",
+   "Tipo": "Curso ausente en Carga Docente",
+   "Curso": "CIXXX Transporte y Sociedad (None)",
+   "Descripción": "Aparece en Cursos_transporte (hoja 2027) pero no en Carga Docente / Cursos 2027.",
+   "Fuente(s)": "Cursos_transporte_2025-2026.xlsx",
+   "Recomendación": "Agregar la fila correspondiente en Carga Docente para no perder el cálculo de carga.",
    "Instrucción de corrección": ""
   },
   {
